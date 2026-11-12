@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en" class="<%= typeof htmlClass !== 'undefined' ? htmlClass : '' %>">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title || siteTitle || "EventIQ - Complete Event Management App" %><%= typeof event !== "undefined" && event?.partnerId ? ` | Partner event: ${event.partnerName || "Event partner"}` : "" %></title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=IBM+Plex+Serif:wght@400;600&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css?v=<%= assetVersion %>" />
+  </head>
+  <body class="<%= typeof bodyClass !== 'undefined' ? bodyClass : '' %>">
+    <div class="ambient-shape shape-a"></div>
+    <div class="ambient-shape shape-b"></div>
+    <header class="site-header">
+      <a class="brand-wrap" href="/">
+        <img class="cosmos-logo" src="/cosmosdb-logo.svg" alt="Azure Cosmos DB" />
+        <span class="brand">EventIQ - Complete Event Management App</span>
+      </a>
+      <nav class="site-nav">
+        <a href="/">Events</a>
+        <a href="/help">Help</a>
+        <% if (publisher) { %>
+        <a href="/publisher">Publisher Console</a>
+        <a href="/publisher/sharing">Shared Access</a>
+        <% } %>
+
+        <% if (supervisor) { %>
+        <a href="/supervisor">Supervisor Console</a>
+        <% } %>
+
+        <% if (registrant) { %>
+        <a href="/registrant/dashboard">My Registrations</a>
+        <% } %>
+
+        <% if (facilitator) { %>
+        <a href="/facilitator/dashboard">My Facilitator Events</a>
+        <% } %>
+
+        <% if (currentUser) { %>
+        <a href="/account/profile">My Profile</a>
+        <span class="user-chip">
+          <span><%= currentUser.name %> (<%= currentUser.persona %>)</span>
+          <% if (currentUser.partnerName) { %><span class="partner-chip-name"><%= currentUser.partnerName %></span><% } %>
+        </span>
+        <form method="post" action="/logout">
+          <button class="link-btn" type="submit">Logout</button>
+        </form>
+        <% } else { %>
+        <a href="/login">Login</a>
+        <% } %>
+      </nav>
+    </header>
+    <% if (partnerAgreement?.required) { %>
+    <aside class="agreement-banner" role="alert">
+      <strong>Partner agreement required.</strong>
+      <span>
+        <%= partnerAgreement.primarySigner
+          ? "Sign the EventIQ Program Terms and Conditions to create or duplicate events."
+          : "Your primary partner publisher must sign the EventIQ Program Terms and Conditions before your organization can create or duplicate events." %>
+      </span>
+      <a href="/partners/agreement"><%= partnerAgreement.primarySigner ? "Review and sign" : "View agreement" %></a>
+    </aside>
+    <% } %>
+    <main class="page">
+      <% if (typeof event !== "undefined" && event?.partnerId && (typeof showEventPartner === "undefined" || showEventPartner)) { %>
+      <%- include("event-partner", { event, compact: false }) %>
+      <% } %>

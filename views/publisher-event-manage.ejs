@@ -1,0 +1,287 @@
+<%- include("partials/header", { title: "Manage Event", publisher, supervisor, registrant, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Publisher", href: "/publisher" }, { label: event.title, href: `/publisher/events/${event.id}` }, { label: "Manage" }] }) %>
+
+<section class="hero slim publisher-manage-hero">
+  <p class="eyebrow">Event Management</p>
+  <h1><%= event.title %></h1>
+  <a class="context-help-link" href="/help#lab-deployments">Lab provisioning help</a>
+  <p>Choose one focused action to update this event, share access, configure follow-up, or cancel it.</p>
+</section>
+
+<% if (message) { %><p class="status publisher-manage-message"><%= message %></p><% } %>
+
+<section class="publisher-action-grid" aria-label="Event management actions">
+  <a class="publisher-action-card" href="#edit-event" data-manage-panel="edit-event"><span class="publisher-action-number">01</span><strong>Edit Event</strong><small>Change schedule, location, description, capacity, or visibility.</small></a>
+  <a class="publisher-action-card" href="#share-access" data-manage-panel="share-access"><span class="publisher-action-number">02</span><strong>Share Access</strong><small>Invite another publisher with read or write access.</small></a>
+  <a class="publisher-action-card" href="#follow-up" data-manage-panel="follow-up"><span class="publisher-action-number">03</span><strong>Follow Up</strong><small>Prepare the post-event email and optional attachment.</small></a>
+  <a class="publisher-action-card" href="#lab-provisioning" data-manage-panel="lab-provisioning"><span class="publisher-action-number">04</span><strong>Lab Provisioning</strong><small>Provision student environments and import lab access.</small></a>
+  <a class="publisher-action-card publisher-action-danger" href="#cancel-event" data-manage-panel="cancel-event"><span class="publisher-action-number">05</span><strong>Cancel Event</strong><small>Stop the event after double confirmation.</small></a>
+  <a class="publisher-action-card" href="#recent-changes" data-manage-panel="recent-changes"><span class="publisher-action-number">06</span><strong>Recent Changes</strong><small>Review event updates and cancellations.</small></a>
+</section>
+
+<section class="panel publisher-manage-section" id="recent-changes" aria-labelledby="audit-heading">
+  <div class="publisher-section-heading"><span class="publisher-action-number">06</span><div><h2 id="audit-heading">Recent Changes</h2><p>Latest updates and cancellations, including who made them.</p></div></div>
+  <% if (auditEntries.length) { %>
+  <div class="compact-table-wrap"><table class="compact-table"><thead><tr><th>When</th><th>Changed by</th><th>Action</th><th>Details</th></tr></thead><tbody>
+    <% auditEntries.forEach((entry) => { %>
+    <tr>
+      <td><time datetime="<%= entry.timestamp %>"><%= new Date(entry.timestamp).toLocaleString() %></time></td>
+      <td><strong><%= entry.actorName || entry.actorEmail || "Unknown publisher" %></strong><% if (entry.actorName && entry.actorEmail) { %><br /><small><%= entry.actorEmail %></small><% } %></td>
+      <td><span class="pill <%= entry.action === 'canceled' ? 'inactive' : 'active' %>"><%= String(entry.action || "updated").split("-").map((part) => part.charAt(0).toUpperCase() + part.slice(1)).join(" ") %></span></td>
+      <td>
+        <%= entry.summary || "Event details changed." %>
+        <% Object.keys(entry.newValues || {}).forEach((field) => { %>
+        <div><small><strong><%= field %>:</strong> <%= entry.oldValues?.[field] === "" ? "(empty)" : JSON.stringify(entry.oldValues?.[field]) %> &rarr; <%= entry.newValues[field] === "" ? "(empty)" : JSON.stringify(entry.newValues[field]) %></small></div>
+        <% }) %>
+      </td>
+    </tr>
+    <% }) %>
+  </tbody></table></div>
+  <% } else { %>
+  <p class="muted">No event changes have been recorded yet.</p>
+  <% } %>
+</section>
+
+<main class="publisher-manage-shell">
+  <section class="panel publisher-manage-section" id="edit-event">
+    <div class="publisher-section-heading"><span class="publisher-action-number">01</span><div><h2>Edit Event</h2><p>Update event details and notify registered participants.</p></div></div>
+    <form method="post" action="/publisher/events/<%= event.id %>/update" class="publisher-manage-form">
+      <label><span class="field-label">Change Summary <span class="required">*</span></span><input type="text" name="changeSummary" placeholder="What changed and why" value="<%= updateFormData?.changeSummary || '' %>" required /></label>
+      <label><span class="field-label">Title <span class="required">*</span></span><input type="text" name="title" value="<%= updateFormData?.title || event.title %>" required /></label>
+      <label class="publisher-form-wide">Description
+        <div class="richtext-toolbar" data-for="updateEventDescription">
+          <button type="button" data-wrap="**|**">B</button><button type="button" data-wrap="*|*"><em>I</em></button><button type="button" data-prefix="- ">Bullets</button><button type="button" data-wrap="[small]|[/small]">Small</button><button type="button" data-wrap="[large]|[/large]">Large</button>
+        </div>
+        <textarea name="description" id="updateEventDescription" rows="5"><%= updateFormData?.description || event.description || "" %></textarea>
+      </label>
+      <label><span class="field-label">Start Date &amp; Time <span class="required">*</span></span><input type="datetime-local" name="startAt" value="<%= updateFormData?.startAt || new Date(event.startAt).toISOString().slice(0,16) %>" required /></label>
+      <label><span class="field-label">End Date &amp; Time <span class="required">*</span></span><input type="datetime-local" name="endAt" value="<%= updateFormData?.endAt || new Date(event.endAt).toISOString().slice(0,16) %>" required /></label>
+      <label><span class="field-label">Time Zone <span class="required">*</span></span><select name="timeZone" required><option value="">Select time zone...</option><% const selectedTimeZone = updateFormData?.timeZone || event.timeZone || "UTC"; %><% if (selectedTimeZone && !(Array.isArray(timeZones) ? timeZones : []).includes(selectedTimeZone)) { %><option value="<%= selectedTimeZone %>" selected><%= selectedTimeZone %></option><% } %><% (Array.isArray(timeZones) ? timeZones : []).forEach((tz) => { %><option value="<%= tz %>" <%= selectedTimeZone === tz ? "selected" : "" %>><%= tz %></option><% }) %></select></label>
+      <label><span class="field-label">Max Seats <span class="required">*</span></span><input type="number" name="maxSeats" min="1" value="<%= updateFormData?.maxSeats || event.maxSeats || 1 %>" required /></label>
+      <label><span class="field-label">Delivery Mode <span class="required">*</span></span><select name="deliveryMode" required><option value="virtual" <%= (updateFormData?.deliveryMode || event.deliveryMode) === "virtual" ? "selected" : "" %>>Virtual</option><option value="in-person" <%= (updateFormData?.deliveryMode || event.deliveryMode) === "in-person" ? "selected" : "" %>>In-person</option><option value="hybrid" <%= (updateFormData?.deliveryMode || event.deliveryMode) === "hybrid" ? "selected" : "" %>>Hybrid</option></select></label>
+      <label>City<input type="text" name="city" value="<%= updateFormData?.city || event.city || "" %>" /></label>
+      <label>Address<input type="text" name="address" value="<%= updateFormData?.address || event.address || "" %>" /></label>
+      <label>Teams Link<input type="url" name="teamsLink" value="<%= updateFormData?.teamsLink || event.teamsLink || "" %>" /></label>
+      <label class="publisher-form-wide"><span class="field-label">Hands-on Labs (GitHub URI / Link)</span><input type="url" name="holUri" value="<%= updateFormData?.holUri || event.holUri || "" %>" placeholder="https://github.com/AzureCosmosDB/..." /></label>
+      <label class="publisher-form-wide unlisted-toggle"><input type="checkbox" name="unlisted" value="true" <%= (updateFormData?.unlisted ?? event.unlisted) ? "checked" : "" %> /><span>Unlisted: hide from the public home page while keeping the direct registration link active.</span></label>
+      <div class="publisher-form-wide publisher-form-actions"><button type="submit">Save Changes and Notify</button></div>
+    </form>
+  </section>
+
+  <section class="panel publisher-manage-section" id="share-access">
+    <div class="publisher-section-heading"><span class="publisher-action-number">02</span><div><h2>Share Access</h2><p>Give another approved publisher visibility into this event. Need to share several events at once? Use the <a href="/publisher/sharing">Shared Access hub</a>.</p></div></div>
+    <% if (accessLevel !== "owner" && accessLevel !== "write") { %>
+    <p class="muted">You need write access to this event to share it with others.</p>
+    <% } else { %>
+    <% if (!collaborators.length) { %><p class="muted">This event is not shared with anyone yet.</p><% } else { %>
+    <div class="compact-table-wrap"><table class="compact-table"><thead><tr><th>Email</th><th>Access</th><% if (accessLevel === "owner") { %><th>Action</th><% } %></tr></thead><tbody><% collaborators.forEach((item) => { %><tr><td><%= item.collaboratorEmail %></td><td><span class="pill <%= item.accessLevel %>"><%= item.accessLevel %></span></td><% if (accessLevel === "owner") { %><td><form method="post" action="/publisher/events/<%= event.id %>/collaborators/<%= encodeURIComponent(item.collaboratorEmail) %>/remove"><button type="submit" class="danger">Remove</button></form></td><% } %></tr><% }) %></tbody></table></div>
+    <% } %>
+    <% if (accessLevel !== "owner") { %><p class="muted">Only the event owner can remove shared access.</p><% } %>
+    <form method="post" action="/publisher/events/<%= event.id %>/collaborators" class="publisher-manage-form publisher-short-form">
+      <label><span class="field-label">Publisher Email <span class="required">*</span></span><input type="email" name="collaboratorEmail" placeholder="name@microsoft.com" required /></label>
+      <label>Access Level<input type="text" value="Write access" readonly /><input type="hidden" name="accessLevel" value="write" /></label>
+      <div class="publisher-form-actions"><button type="submit">Share Access</button></div>
+    </form>
+    <% } %>
+  </section>
+
+  <section class="panel publisher-manage-section" id="follow-up">
+    <div class="publisher-section-heading"><span class="publisher-action-number">03</span><div><h2>Follow Up</h2><p>Prepare the message used for post-event communication.</p></div></div>
+    <form method="post" action="/publisher/events/<%= event.id %>/follow-up-template" enctype="multipart/form-data" class="publisher-manage-form">
+      <label><span class="field-label">Subject <span class="required">*</span></span><input type="text" name="subject" value="<%= followUpFormData?.subject || followUpTemplate?.subject || (`Post-event feedback: ${event.title}`) %>" required /></label>
+      <label class="publisher-form-wide"><span class="field-label">Body <span class="required">*</span></span><textarea name="body" rows="6" required><%= followUpFormData?.body || followUpTemplate?.body || `Thanks for attending ${event.title}.\n\nPlease submit your feedback: ${event.feedbackLink}` %></textarea></label>
+      <% if (followUpTemplate?.attachmentFileName) { %><p class="muted publisher-form-wide">Current attachment: <strong><%= followUpTemplate.attachmentFileName %></strong></p><% } %>
+      <label>Attachment (optional, max 5 MB)<input type="file" name="attachment" /></label>
+      <div class="publisher-form-actions publisher-form-wide"><button type="submit">Save Follow-Up</button></div>
+    </form>
+  </section>
+
+  <section class="panel publisher-manage-section" id="lab-provisioning">
+    <div class="publisher-section-heading"><span class="publisher-action-number">04</span><div><h2>Lab Provisioning</h2><p>Trigger workshop lab deployment and automatically import generated lab credentials.</p></div><a class="icon-button" href="/publisher/events/<%= event.id %>/manage?refreshed=<%= Date.now() %>#lab-provisioning" title="Refresh lab status" aria-label="Refresh lab status">&#8635;</a></div>
+    <p class="muted" id="labProvisioningAutoRefresh" role="status" aria-live="polite" hidden></p>
+    <div class="direct-link-box">
+      <p><strong>Labs deployed:</strong> <%= labProvisioningSummary.deployedCount %></p>
+      <p><strong>In progress:</strong> <%= labProvisioningSummary.inProgressCount %></p>
+      <p><strong>Failed or needs manual action:</strong> <%= labProvisioningSummary.failedCount %></p>
+      <p><strong>Remaining active registrations without lab access:</strong> <%= labProvisioningSummary.unassignedCount %></p>
+    </div>
+    <% if (labProvisioningBatches.length) { %>
+    <div class="compact-table-wrap lab-batch-table-wrap">
+      <table class="compact-table lab-batch-table"><thead><tr><th>Batch</th><th>Status</th><th>Requested</th><th>Completed</th><th>Timing</th><th>Environment</th><th>Latest message</th><th>Error</th><th>Delete labs</th></tr></thead><tbody>
+      <% labProvisioningBatches.forEach((batch) => { const start = Number(batch.startStudentNumber || 1); const count = Number(batch.studentCount || 0); const expiry = batch.expiresAt || (batch.requestedAt ? new Date(new Date(batch.requestedAt).getTime() + Number(batch.accessDurationHours || 72) * 60 * 60 * 1000).toISOString() : ""); const completedAt = batch.completedAt || ""; const elapsedSeconds = completedAt && batch.requestedAt ? Math.max(0, Math.floor((new Date(completedAt).getTime() - new Date(batch.requestedAt).getTime()) / 1000)) : null; const formatElapsed = (seconds) => { if (!Number.isFinite(seconds)) return "-"; const hours = Math.floor(seconds / 3600); const minutes = Math.floor((seconds % 3600) / 60); const remainingSeconds = seconds % 60; return [hours, minutes, remainingSeconds].map((value) => String(value).padStart(2, "0")).join(":"); }; %>
+        <tr>
+          <td><strong><%= count %> lab<%= count === 1 ? "" : "s" %></strong><br /><small>Parallel: <%= batch.maxParallelDeployments || Math.min(count, 100) %></small><br /><small>Labs: <%= Array.isArray(batch.requestedStudentNumbers) && batch.requestedStudentNumbers.length ? batch.requestedStudentNumbers.join(", ") : `${start}-${start + Math.max(count - 1, 0)}` %></small><br /><small>Sequence: <%= batch.registrationSequenceStart ? `${batch.registrationSequenceStart}-${batch.registrationSequenceEnd}` : "Legacy batch" %></small><br /><small><%= batch.labType === "documentdb" || batch.isDocDB ? "DocumentDB" : "NoSQL API" %></small></td>
+          <td><span class="pill <%= batch.status === 'completed' ? 'active' : ['failed', 'manual-required'].includes(batch.status) ? 'inactive' : 'read' %>"><%= batch.status %></span><br /><small>Deployed: <%= batch.deployedCount ?? batch.importedCount ?? 0 %> / <%= count %></small><% if (batch.failedCount) { %><br /><small><%= batch.failedCount %> failed</small><% } %></td>
+          <td><strong><%= batch.requestedBy || "Unknown" %></strong><br /><small><%= batch.requestedAt ? new Date(batch.requestedAt).toLocaleString() : "-" %></small></td>
+          <td><%= completedAt ? new Date(completedAt).toLocaleString() : "-" %></td>
+          <td><strong>Total:</strong> <%= formatElapsed(elapsedSeconds) %><br /><strong>Avg/lab:</strong> <%= formatElapsed(elapsedSeconds === null || count < 1 ? null : Math.floor(elapsedSeconds / count)) %><br /><small>Access: <%= batch.accessDurationHours || 72 %>h</small><% if (expiry) { %><br /><small>Expiry: <%= new Date(expiry).toLocaleString() %></small><% } %></td>
+          <td><%= batch.location %><br /><small><%= batch.vmSize %></small></td>
+          <td><%= batch.progressMessage || "" %></td>
+          <td><%= batch.error || "" %></td>
+          <td><% if (accessLevel === "owner" || accessLevel === "write") { %><form method="post" action="/publisher/events/<%= event.id %>/lab-provisioning/delete" class="lab-range-delete-form"><input type="hidden" name="batchId" value="<%= batch.id %>" /><input type="text" name="range" inputmode="numeric" pattern="\d+(?:-\d*)?" placeholder="<%= `1-${count}` %>" aria-label="Batch lab positions to delete" required /><button type="submit" class="danger">Delete</button></form><% } else { %><span class="muted">View only</span><% } %></td>
+        </tr>
+      <% }) %>
+      </tbody></table>
+    </div>
+    <% } else if (labProvisioningJob) { %>
+    <div class="direct-link-box">
+      <p><strong>Status:</strong> <span class="pill <%= labProvisioningJob.status === 'completed' ? 'active' : labProvisioningJob.status === 'failed' ? 'inactive' : 'read' %>"><%= labProvisioningJob.status %></span></p>
+      <p><strong>Student Count:</strong> <%= labProvisioningJob.studentCount || 0 %></p>
+      <p><strong>Max Simultaneous Deployments:</strong> <%= labProvisioningJob.maxParallelDeployments || Math.min(labProvisioningJob.studentCount || 0, 100) %></p>
+      <p><strong>Lab Type:</strong> <%= labProvisioningJob.labType === "documentdb" || labProvisioningJob.isDocDB ? "DocumentDB" : "NoSQL API" %></p>
+      <% const accessDurationHours = Number.isInteger(Number(labProvisioningJob.accessDurationHours)) ? Number(labProvisioningJob.accessDurationHours) : 72; %>
+      <% const calculatedExpiresAt = labProvisioningJob.expiresAt || (labProvisioningJob.requestedAt ? new Date(new Date(labProvisioningJob.requestedAt).getTime() + accessDurationHours * 60 * 60 * 1000).toISOString() : ""); %>
+      <p><strong>Delete Labs After:</strong> <%= accessDurationHours %> hour<%= accessDurationHours === 1 ? "" : "s" %></p>
+      <% if (calculatedExpiresAt) { %><p><strong>Estimated Lab Expiry:</strong> <time datetime="<%= calculatedExpiresAt %>"><%= new Date(calculatedExpiresAt).toLocaleString() %></time></p><% } %>
+      <% if (labProvisioningJob.importedCount) { %><p><strong>Imported Lab Rows:</strong> <%= labProvisioningJob.importedCount %></p><% } %>
+      <% if (labProvisioningJob.updatedAt) { %><p><strong>Last Updated:</strong> <%= new Date(labProvisioningJob.updatedAt).toLocaleString() %></p><% } %>
+      <% if (labProvisioningJob.error) { %><p class="error"><%= labProvisioningJob.error %></p><% } %>
+      <% if (labProvisioningJob.command) { %>
+      <label>Manual Command<textarea rows="3" readonly><%= labProvisioningJob.command %></textarea></label>
+      <% } %>
+    </div>
+    <% } else { %>
+    <p class="muted">No provisioning job has been created for this event yet.</p>
+    <% } %>
+    <% if (accessLevel === "owner" || accessLevel === "write") { %>
+    <% if (labProvisioningSummary.availableRegistrations.length || labProvisioningSummary.availableTeamMembers.length) { %>
+    <form method="post" action="/publisher/events/<%= event.id %>/lab-provisioning/request" class="publisher-manage-form publisher-short-form">
+      <p class="muted publisher-form-wide"><strong><%= labProvisioningSummary.availableRegistrations.length %></strong> student<%= labProvisioningSummary.availableRegistrations.length === 1 ? "" : "s" %> and <strong><%= labProvisioningSummary.availableTeamMembers.length %></strong> speaker/proctor<%= labProvisioningSummary.availableTeamMembers.length === 1 ? "" : "s" %> are available for the next batch.</p>
+      <% if (!labProvisioningConfig.callbackConfigured) { %><p class="error publisher-form-wide">LAB_PROVISIONING_CALLBACK_TOKEN is not configured, so workflow callback import is disabled.</p><% } %>
+      <% if (!labProvisioningConfig.githubConfigured) { %><p class="error publisher-form-wide">GitHub dispatch is not configured. The button will create a job and show the manual command.</p><% } %>
+      <fieldset class="publisher-form-wide">
+        <legend>Deployment audience <span class="required">*</span></legend>
+        <label class="checkbox-row"><input type="checkbox" name="deployStudents" value="true" id="deployStudents" /> Deploy for students</label>
+        <label class="checkbox-row"><input type="checkbox" name="deployTeam" value="true" /> Deploy for speakers / proctors</label>
+        <p class="muted">Select one or both. No audience is selected by default, and at least one selection is required.</p>
+      </fieldset>
+      <label><span class="field-label">Lab Type</span><select name="labType" required><option value="documentdb" <%= defaultLabType === "documentdb" ? "selected" : "" %>>DocumentDB</option><option value="nosql" <%= defaultLabType === "nosql" ? "selected" : "" %>>NoSQL API</option></select></label>
+      <label><span class="field-label">Student registration sequence</span><input type="text" name="registrationSequence" id="registrationSequence" inputmode="numeric" pattern="\d+(?:-\d*)?" value="1-" placeholder="24-27" aria-describedby="labProvisioningSequenceHelp" /></label>
+      <p class="muted publisher-form-wide" id="labProvisioningSequenceHelp">Enter a closed range such as <strong>24-27</strong>, or use <strong>1-</strong> or <strong>2-</strong> to deploy from that registration through the last active registration. The app assigns new physical lab numbers that have never been used for this event, preventing environments from being shared accidentally. Every registration in the range must need a lab. Up to 100 labs deploy simultaneously.</p>
+      <label><span class="field-label">Azure location</span><input type="text" name="location" value="<%= labProvisioningJob?.location || labProvisioningConfig.location %>" required /></label>
+      <label><span class="field-label">VM SKU</span><input type="text" name="vmSize" value="<%= labProvisioningJob?.vmSize || labProvisioningConfig.vmSize %>" required /></label>
+      <label><span class="field-label">Delete labs after (hours)</span><input type="number" name="accessDurationHours" min="1" max="720" value="<%= labProvisioningJob?.accessDurationHours || 72 %>" required /></label>
+      <p class="muted publisher-form-wide">The countdown starts when provisioning begins.</p>
+      <div class="publisher-form-actions publisher-form-wide"><button type="submit">Request Lab Provisioning</button></div>
+    </form>
+    <% } else { %>
+    <p class="muted">All eligible students, speakers, and proctors are assigned or reserved by a provisioning batch. No additional labs can be requested.</p>
+    <% } %>
+    <% } else { %>
+    <p class="muted">View-only access. Ask the event owner for write access to request lab provisioning.</p>
+    <% } %>
+  </section>
+
+  <section class="panel publisher-manage-section publisher-danger-section" id="cancel-event">
+    <div class="publisher-section-heading"><span class="publisher-action-number">05</span><div><h2>Cancel Event</h2><p>This action stops the event and notifies participants.</p></div></div>
+    <form method="post" action="/publisher/events/<%= event.id %>/cancel" class="publisher-manage-form publisher-short-form">
+      <label>Reason<input type="text" name="reason" value="<%= cancelFormData?.reason || '' %>" placeholder="Optional cancellation reason" /></label>
+      <label><span class="field-label">Type CANCEL <span class="required">*</span></span><input type="text" name="confirmationText" value="<%= cancelFormData?.confirmationText || '' %>" required /></label>
+      <label><span class="field-label">Event ID <span class="required">*</span></span><input type="text" name="confirmationEventId" value="<%= cancelFormData?.confirmationEventId || event.id %>" readonly required /></label>
+      <div class="publisher-form-actions"><button type="submit" class="danger">Cancel Event</button></div>
+    </form>
+  </section>
+</main>
+
+<script>
+  const managePanels = Array.from(document.querySelectorAll('.publisher-manage-section'));
+  const managePanelLinks = Array.from(document.querySelectorAll('[data-manage-panel]'));
+  const deployStudents = document.getElementById('deployStudents');
+  const registrationSequence = document.getElementById('registrationSequence');
+  if (deployStudents && registrationSequence) {
+    const syncRegistrationSequence = () => {
+      registrationSequence.required = deployStudents.checked;
+      registrationSequence.disabled = !deployStudents.checked;
+    };
+    deployStudents.addEventListener('change', syncRegistrationSequence);
+    syncRegistrationSequence();
+  }
+
+  function selectManagePanel(panelId) {
+    const selectedPanelId = managePanels.some((panel) => panel.id === panelId) ? panelId : 'edit-event';
+    managePanels.forEach((panel) => {
+      panel.hidden = panel.id !== selectedPanelId;
+    });
+    managePanelLinks.forEach((link) => {
+      link.setAttribute('aria-current', link.dataset.managePanel === selectedPanelId ? 'page' : 'false');
+    });
+  }
+
+  selectManagePanel(window.location.hash.slice(1));
+  managePanelLinks.forEach((link) => {
+    link.addEventListener('click', () => selectManagePanel(link.dataset.managePanel));
+  });
+  window.addEventListener('hashchange', () => {
+    selectManagePanel(window.location.hash.slice(1));
+    scheduleLabProvisioningRefresh();
+  });
+
+  const shouldAutoRefreshLabProvisioning = <%- JSON.stringify(
+    labProvisioningBatches.some((batch) => ["requested", "dispatched", "running", "deleting"].includes(String(batch.status || "").toLowerCase()))
+    || ["requested", "dispatched", "running", "deleting"].includes(String(labProvisioningJob?.status || "").toLowerCase())
+  ) %>;
+  const labProvisioningAutoRefresh = document.getElementById('labProvisioningAutoRefresh');
+  let labProvisioningRefreshTimeout;
+  let labProvisioningCountdownInterval;
+
+  function scheduleLabProvisioningRefresh() {
+    window.clearTimeout(labProvisioningRefreshTimeout);
+    window.clearInterval(labProvisioningCountdownInterval);
+    if (labProvisioningAutoRefresh) {
+      labProvisioningAutoRefresh.hidden = true;
+    }
+    if (!shouldAutoRefreshLabProvisioning || window.location.hash !== '#lab-provisioning') {
+      return;
+    }
+
+    let secondsRemaining = 30;
+    const updateCountdown = () => {
+      labProvisioningAutoRefresh.hidden = false;
+      labProvisioningAutoRefresh.textContent = `Refreshing lab status in ${secondsRemaining} second${secondsRemaining === 1 ? '' : 's'}...`;
+    };
+    updateCountdown();
+    labProvisioningCountdownInterval = window.setInterval(() => {
+      secondsRemaining -= 1;
+      updateCountdown();
+    }, 1000);
+    labProvisioningRefreshTimeout = window.setTimeout(() => {
+      const refreshUrl = new URL(window.location.href);
+      refreshUrl.searchParams.set('refreshed', Date.now());
+      refreshUrl.hash = 'lab-provisioning';
+      window.location.replace(refreshUrl);
+    }, 30000);
+  }
+
+  scheduleLabProvisioningRefresh();
+
+  document.querySelectorAll('.richtext-toolbar').forEach((toolbar) => {
+    const target = document.getElementById(toolbar.dataset.for);
+    toolbar.addEventListener('click', (event) => {
+      const button = event.target.closest('button');
+      if (!button || !target) return;
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+      const selected = target.value.slice(start, end) || 'text';
+      let replacement = selected;
+      if (button.dataset.wrap) {
+        const [before, after] = button.dataset.wrap.split('|');
+        replacement = `${before}${selected}${after}`;
+      } else if (button.dataset.prefix) {
+        replacement = selected.split('\n').map((line) => `${button.dataset.prefix}${line || 'item'}`).join('\n');
+      }
+      target.setRangeText(replacement, start, end, 'select');
+      target.focus();
+    });
+  });
+
+  document.querySelectorAll('.lab-range-delete-form').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+      const range = form.elements.range.value.trim();
+      if (!window.confirm(`Delete lab resources in range ${range}? Missing lab numbers will be skipped.`)) {
+        event.preventDefault();
+      }
+    });
+  });
+</script>
+
+<%- include("partials/footer") %>

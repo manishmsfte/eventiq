@@ -1,0 +1,45 @@
+<%- include("partials/header", { title: `Lab Access - ${teamMember.name}`, publisher, supervisor, registrant, facilitator, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: event.title, href: `/publisher/events/${event.id}/reports/registrations` }, { label: "Lab Credentials" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Speaker / Proctor Lab Access</p>
+  <h1><%= teamMember.name %></h1>
+  <p><%= teamMember.email %> - <%= teamMember.roles.join(" / ") %></p>
+</section>
+
+<section class="panel">
+  <h2>Lab Credentials</h2>
+  <p class="muted">Use these credentials when the Bastion VM page asks you to sign in.</p>
+
+  <% if (lab.labVmUsername || lab.labVmPassword || lab.labWebUri) { %>
+  <fieldset class="lab-detail-group">
+    <legend>VM Details</legend>
+    <% if (lab.labVmUsername) { %><p><strong>VM User Name:</strong> <%= lab.labVmUsername %></p><% } %>
+    <% if (lab.labVmPassword) { %><p><strong>VM Password:</strong> <%= lab.labVmPassword %></p><% } %>
+    <% if (lab.labWebUri) { %><p><strong>VM URI:</strong> <a href="<%= lab.labWebUri %>" target="_blank" rel="noreferrer"><%= lab.labWebUri %></a></p><% } %>
+  </fieldset>
+  <% } %>
+
+  <% const portalPassword = lab.labPortalPassword || (lab.labPortalUsername && lab.labVmPassword ? lab.labVmPassword : ""); %>
+  <% if (lab.labPortalUsername || portalPassword) { %>
+  <fieldset class="lab-detail-group">
+    <legend>Azure Portal Login Details</legend>
+    <p><strong>Azure Portal:</strong> <a href="https://portal.azure.com" target="_blank" rel="noreferrer">https://portal.azure.com</a></p>
+    <% if (lab.labPortalUsername) { %><p><strong>Azure Portal User Name:</strong> <%= lab.labPortalUsername %></p><% } %>
+    <% if (portalPassword) { %><p><strong>Azure Portal Password:</strong> <%= portalPassword %></p><% } %>
+  </fieldset>
+  <% } %>
+
+  <% if (lab.labResourceGroup) { %><p><strong>Resource Group:</strong> <%= lab.labResourceGroup %></p><% } %>
+  <% const databaseType = String(lab.labDatabaseAccountType || "").toLowerCase(); %>
+  <% const isDocumentDb = databaseType === "documentdb" || /^docdb-/i.test(String(lab.labDatabaseAccountName || "")); %>
+  <% if (lab.labDatabaseAccountName) { %>
+  <p><strong><%= isDocumentDb ? "Azure DocumentDB Cluster Name" : databaseType === "cosmosdb" ? "Azure Cosmos DB Account Name" : "Database Account Name" %>:</strong> <%= lab.labDatabaseAccountName %></p>
+  <% if (isDocumentDb && lab.labVmUsername) { %><p><strong>Azure DocumentDB User Name:</strong> <%= String(lab.labVmUsername).replace(/_/g, "") %></p><% } %>
+  <% if (isDocumentDb && lab.labVmPassword) { %><p><strong>Azure DocumentDB Password:</strong> <%= lab.labVmPassword %></p><% } %>
+  <% } %>
+  <% if (lab.labFoundryAccountName) { %><p><strong>Azure AI Foundry Name:</strong> <%= lab.labFoundryAccountName %></p><% } %>
+  <% if (lab.labAccessUpdatedAt) { %><p><strong>Deployed:</strong> <%= new Date(lab.labAccessUpdatedAt).toLocaleString() %></p><% } %>
+</section>
+
+<%- include("partials/footer") %>

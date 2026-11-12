@@ -1,0 +1,150 @@
+<%- include("partials/header", { title: "Event Feedback", publisher, supervisor, registrant, bodyClass: "feedback-page" }) %>
+<% const feedbackFormData = formData || {}; %>
+<% const feedbackInitialStep = typeof initialStep !== "undefined" && initialStep === "follow-up" ? "follow-up" : "ratings"; %>
+<% const feedbackShowLab = typeof showLabDetails !== "undefined" && showLabDetails; %>
+<% const selectedProjectTypes = Array.isArray(feedbackFormData.projectType) ? feedbackFormData.projectType : [feedbackFormData.projectType].filter(Boolean); %>
+<% const selectedFollowUpTypes = Array.isArray(feedbackFormData.followUpType) ? feedbackFormData.followUpType : [feedbackFormData.followUpType].filter(Boolean); %>
+
+<section class="auth-wrap feedback-shell">
+  <div class="feedback-heading">
+    <div>
+      <h1>Feedback: <%= event.title %></h1>
+      <p class="feedback-event-meta">
+        <span><strong>Date:</strong> <time datetime="<%= event.startAt %>"><%= new Date(event.startAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) %></time></span>
+        <span><%= formatDualTimezone(event.startAt, event.timeZone) %> - <%= formatDualTimezone(event.endAt, event.timeZone) %></span>
+      </p>
+    </div>
+    <button type="button" class="link-btn feedback-lab-toggle" data-feedback-show-lab aria-controls="feedbackLabPanel" aria-expanded="<%= feedbackShowLab ? "true" : "false" %>">Lab details</button>
+  </div>
+
+  <% if (error) { %>
+  <p class="error feedback-error" role="alert"><%= error %></p>
+  <% } %>
+
+  <form method="post" action="/events/<%= event.id %>/feedback" id="eventFeedbackForm" class="feedback-form" data-initial-step="<%= feedbackInitialStep %>" data-selected-session="<%= selectedSession?.id || "" %>" <%= feedbackShowLab ? "hidden" : "" %>>
+    <input type="hidden" name="lookupEmail" value="<%= lookupEmail || "" %>" />
+    <section class="feedback-step" data-feedback-step="ratings" aria-label="Event and session ratings" tabindex="-1" <%= feedbackInitialStep !== "ratings" ? "hidden" : "" %>>
+      <div class="feedback-summary">
+        <%- include("partials/feedback-stars", { name: "rating", inputId: "eventRating", label: "1. How would you rate the event?", rating: feedbackFormData.rating || "", required: true, compact: false }) %>
+        <fieldset class="feedback-question">
+          <legend>2. Would you recommend this event to others?</legend>
+          <div class="feedback-choices">
+            <label><input type="radio" name="recommendation" value="yes" <%= feedbackFormData.recommendation === "yes" ? "checked" : "" %> required /><span>Yes</span></label>
+            <label><input type="radio" name="recommendation" value="no" <%= feedbackFormData.recommendation === "no" ? "checked" : "" %> required /><span>No</span></label>
+          </div>
+        </fieldset>
+      </div>
+
+      <% if ((sessions || []).length) { %>
+      <section class="feedback-session-panel" aria-labelledby="feedbackSessionsTitle">
+        <h2 id="feedbackSessionsTitle">3. Rate sessions <small>(optional)</small></h2>
+        <div class="feedback-session-list">
+          <table class="feedback-session-table">
+            <thead><tr><th scope="col">Session</th><th scope="col">Your rating</th></tr></thead>
+            <tbody>
+              <% sessions.forEach((session, index) => { %>
+              <tr class="feedback-session-row" data-session-id="<%= session.id %>" <%= index >= 4 ? "hidden" : "" %>>
+                <th scope="row"><span title="<%= session.title %>"><%= session.title %></span></th>
+                <td>
+                  <%- include("partials/feedback-stars", { name: `sessionRatings[${session.id}]`, inputId: `sessionRating-${index}`, label: `Rate ${session.title}`, rating: feedbackFormData.sessionRatings?.[session.id] || "", required: false, compact: true }) %>
+                  <button type="button" class="link-btn feedback-clear-rating" data-feedback-clear-rating aria-label="Clear rating for <%= session.title %>">Clear</button>
+                </td>
+              </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+        <nav class="feedback-session-pagination" aria-label="Session pages">
+          <button type="button" data-feedback-session-page="-1">Previous</button>
+          <span data-feedback-session-range aria-live="polite"></span>
+          <button type="button" data-feedback-session-page="1">Next</button>
+        </nav>
+      </section>
+      <% } %>
+
+      <div class="feedback-bottom-questions">
+        <fieldset class="feedback-question">
+          <legend><%= (sessions || []).length ? "4." : "3." %> Do you have an existing project, or are you evaluating a new project, where you would like our help?</legend>
+          <div class="feedback-choices">
+            <label><input type="radio" name="needsProjectHelp" value="yes" <%= feedbackFormData.needsProjectHelp === "yes" ? "checked" : "" %> required /><span>Yes</span></label>
+            <label><input type="radio" name="needsProjectHelp" value="no" <%= feedbackFormData.needsProjectHelp !== "yes" ? "checked" : "" %> required /><span>No</span></label>
+          </div>
+        </fieldset>
+        <label class="feedback-comments">
+          Comments (optional)
+          <textarea name="comments" rows="1" placeholder="Anything else to share?"><%= feedbackFormData.comments || "" %></textarea>
+        </label>
+      </div>
+    </section>
+
+    <section class="feedback-step" data-feedback-step="follow-up" aria-labelledby="feedbackFollowUpTitle" tabindex="-1" <%= feedbackInitialStep !== "follow-up" ? "hidden" : "" %>>
+      <h2 id="feedbackFollowUpTitle">Tell us about your project</h2>
+      <fieldset id="feedbackFollowUpFields" class="feedback-followup-fields">
+        <legend class="feedback-visually-hidden">Contact details and follow-up preferences</legend>
+        <div class="feedback-followup-grid">
+          <label>
+            <span>Email address <span class="feedback-required-note">(required for follow-up)</span></span>
+            <input type="email" name="candidateEmail" autocomplete="email" value="<%= feedbackFormData.candidateEmail || lookupEmail || "" %>" <%= feedbackInitialStep === "follow-up" && feedbackFormData.needsProjectHelp === "yes" ? "required" : "" %> />
+          </label>
+          <% if (!labAccess) { %>
+          <label>
+            Database account name (optional)
+            <input type="text" name="databaseAccountName" value="<%= feedbackFormData.databaseAccountName || "" %>" placeholder="If relevant to your request" />
+          </label>
+          <% } %>
+          <fieldset class="feedback-question feedback-project-types">
+            <legend>Is this for an existing project or a new project? <span class="feedback-required-note">(choose one or both)</span></legend>
+            <div class="feedback-checkbox-list">
+              <% (projectTypes || []).forEach((type) => { %>
+              <label><input type="checkbox" name="projectType" value="<%= type %>" <%= selectedProjectTypes.includes(type) ? "checked" : "" %> /><span><%= type %></span></label>
+              <% }) %>
+            </div>
+          </fieldset>
+          <fieldset class="feedback-question feedback-followup-types">
+            <legend>What would you like help with? <span class="feedback-required-note">(choose one or more)</span></legend>
+            <div class="feedback-checkbox-list">
+              <% (followUpTypes || []).forEach((type) => { %>
+              <label><input type="checkbox" name="followUpType" value="<%= type %>" <%= selectedFollowUpTypes.includes(type) ? "checked" : "" %> /><span><%= type %></span></label>
+              <% }) %>
+            </div>
+          </fieldset>
+          <label class="feedback-followup-details">
+            Project context (optional)
+            <textarea name="followUpDetails" rows="2" placeholder="What are you building or evaluating? Include your current setup, challenges, help needed, and timeline."><%= feedbackFormData.followUpDetails || "" %></textarea>
+          </label>
+        </div>
+        <label class="feedback-consent">
+          <input type="checkbox" name="contactConsent" value="yes" <%= feedbackFormData.contactConsent === "yes" ? "checked" : "" %> />
+          <span>I agree that Microsoft may contact me about my responses and this follow-up request. This does not give marketing permission.</span>
+        </label>
+      </fieldset>
+    </section>
+
+    <div class="feedback-form-actions">
+      <button type="button" class="feedback-secondary-button" id="feedbackBack" <%= feedbackInitialStep !== "follow-up" ? "hidden" : "" %>>Back</button>
+      <button type="submit" id="feedbackSubmit"><%= feedbackInitialStep === "ratings" && feedbackFormData.needsProjectHelp === "yes" ? "Continue" : "Submit feedback" %></button>
+    </div>
+  </form>
+
+  <section id="feedbackLabPanel" class="feedback-lab-panel" aria-label="Lab details" <%= feedbackShowLab ? "" : "hidden" %>>
+    <%- include("partials/feedback-lab-details") %>
+    <button type="button" class="feedback-secondary-button" data-feedback-return>Back to feedback</button>
+  </section>
+
+  <p class="feedback-privacy">
+    Feedback is used by Microsoft<%= event.partnerId ? ` and ${event.partnerName || "the event partner"}` : "" %> to administer and improve this event, and retained only as needed.
+    <a href="http://go.microsoft.com/fwlink/?LinkId=521839" target="_blank" rel="noreferrer">Microsoft Privacy Statement</a><% if (event.partnerId && event.partnerPrivacyPolicyUrl) { %> &middot; <a href="<%= event.partnerPrivacyPolicyUrl %>" target="_blank" rel="noreferrer"><%= event.partnerName %> Privacy Policy</a><% } %>.
+  </p>
+</section>
+
+<noscript>
+  <p class="muted">JavaScript enables compact steps and session pages. All questions are shown below without it.</p>
+  <style>
+    .feedback-page { height: auto; }
+    .feedback-page .feedback-step[hidden], .feedback-page .feedback-lab-panel[hidden], .feedback-page .feedback-form[hidden] { display: block !important; }
+    .feedback-page .feedback-session-row[hidden] { display: table-row !important; }
+    .feedback-page .feedback-session-pagination, .feedback-page .feedback-lab-toggle, .feedback-page #feedbackBack, .feedback-page [data-feedback-return], .feedback-page .feedback-clear-rating { display: none; }
+  </style>
+</noscript>
+<script src="/feedback.js?v=<%= assetVersion %>" defer></script>
+<%- include("partials/footer") %>

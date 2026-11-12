@@ -1,0 +1,18 @@
+<% if (Array.isArray(items) && items.length) { %>
+<nav class="breadcrumbs" aria-label="Breadcrumb">
+  <% items.forEach((item, index) => { %>
+  <% const isLast = index === items.length - 1; %>
+  <% if (!isLast && item.href) { %>
+  <a href="<%= item.href %>"><%= item.label %></a>
+  <span>/</span>
+  <% } else { %>
+  <strong><%= item.label %></strong>
+  <% if (!isLast) { %>
+  <span>/</span>
+  <% } %>
+  <% } %>
+  <% }) %>
+  <% const backParent = items.slice(0, -1).reverse().find((item) => item.href); %>
+  <a class="breadcrumb-back" href="<%= backParent?.href || "/" %>" aria-label="Back to <%= backParent?.label || "Events" %>">&larr; Back</a>
+</nav>
+<% } %>

@@ -1,0 +1,368 @@
+<%- include("partials/header", { title: "Manage Registrations", publisher, supervisor, registrant, facilitator, currentUser }) %>
+<% const isFacilitatorOperator = typeof operatorType !== "undefined" && operatorType !== "publisher"; %>
+<% const hasRegistrationWriteAccess = typeof canManageRegistrations !== "undefined" ? canManageRegistrations : accessLevel === "owner" || accessLevel === "write"; %>
+<%- include("partials/breadcrumbs", { items: isFacilitatorOperator ? [{ label: "Home", href: "/" }, { label: "My Facilitator Events", href: "/facilitator/dashboard" }, { label: event.title, href: `/facilitator/events/${event.id}` }, { label: "Manage Registrations" }] : [{ label: "Home", href: "/" }, { label: "Publisher", href: "/publisher" }, { label: event.title, href: `/publisher/events/${event.id}` }, { label: "Manage Registrations" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Event Operations</p>
+  <h1>Manage Registrations</h1>
+  <p><%= event.title %></p>
+  <a class="context-help-link" href="/help#attendance">Registration management help</a>
+  <p>
+    Status: <span class="pill status <%= event.computedStatus %>"><%= event.computedStatus %></span>
+    <% if (isFacilitatorOperator) { %>
+    <span class="pill shared-access"><%= operatorType === "speaker" ? "Speaker" : operatorType === "proctor" ? "Proctor" : "Facilitator" %> access</span>
+    <% } else if (accessLevel !== "owner") { %>
+    <span class="pill shared-access">Shared (<%= accessLevel %>)</span>
+    <% } %>
+  </p>
+</section>
+
+<% if (message) { %>
+<p class="status"><%= message %></p>
+<% } %>
+<% if (piiRestricted) { %>
+<p class="error">PII masking is active. Unmasked attendee data is restricted to authorized identity only.</p>
+<% } %>
+
+<section class="panel">
+  <h2>Summary</h2>
+  <div class="kpi-grid">
+    <article class="mini-card">
+      <h3>Registered</h3>
+      <p class="kpi-number" data-summary-count="registered"><%= reportSummary.registered %></p>
+    </article>
+    <article class="mini-card">
+      <h3>Attended</h3>
+      <p class="kpi-number" data-summary-count="attended"><%= reportSummary.attended %></p>
+    </article>
+    <% if (event.partnerId) { %>
+    <article class="mini-card"><h3>Pending Approval</h3><p class="kpi-number"><%= reportSummary.pending %></p></article>
+    <article class="mini-card"><h3>Rejected</h3><p class="kpi-number"><%= reportSummary.rejected %></p></article>
+    <% } %>
+    <article class="mini-card">
+      <h3>Deregistered</h3>
+      <p class="kpi-number" data-summary-count="deregistered"><%= reportSummary.deregistered %></p>
+    </article>
+  </div>
+
+  <div class="inline-actions top-gap">
+    <a href="/publisher/events/<%= event.id %>/reports/registrations.xlsx">Download Excel Report</a>
+    <a href="/publisher/events/<%= event.id %>/registrations/mail-merge.csv">Download Email List (Mail Merge CSV)</a>
+    <a href="/publisher/events/<%= event.id %>/reports/organizations">Organization Report</a>
+  </div>
+
+  <% if (!registrations.length) { %>
+  <p>No registration data available.</p>
+  <% } else { %>
+  <div class="compact-table-wrap">
+    <table class="compact-table registration-report-table">
+      <thead>
+        <tr>
+          <th>#</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Organization</th>
+          <th>Registration Code</th>
+          <th>Status</th>
+          <th>Attended</th>
+          <th>Lab Deployed To</th>
+          <th>Lab Deployed Date</th>
+          <th>Lab Access</th>
+          <% if (!piiRestricted) { %><th>Registrant Access</th><% } %>
+          <% if (hasRegistrationWriteAccess) { %><th>Action</th><% } %>
+        </tr>
+      </thead>
+      <tbody>
+        <% registrations.forEach((item, index) => { %>
+        <tr data-registration-id="<%= item.id %>">
+          <td><%= index + 1 %></td>
+          <td class="text-wrap attendee-name-cell"><%= item.attendeeName %></td>
+          <td><%= item.attendeeEmail %></td>
+          <td class="text-wrap"><%= item.organization || "N/A" %></td>
+          <td><%= item.registrationCode || (item.status === "pending-approval" ? "Pending approval" : "N/A") %></td>
+          <td data-status-label><%= item.status || "registered" %></td>
+          <td data-attended-label><%= item.attended ? "Yes" : "No" %></td>
+          <td><%= item.attendeeName || item.attendeeEmail %></td>
+          <td><%= item.labAccessUpdatedAt ? new Date(item.labAccessUpdatedAt).toLocaleString() : "Not deployed" %></td>
+          <td>
+            <% if (item.labWebUri || item.labVmUsername || item.labVmPassword || item.labPortalUsername || item.labPortalPassword || item.labResourceGroup || item.labDatabaseAccountName || item.labFoundryAccountName) { %>
+            <% const databaseAccountLabel = item.labDatabaseAccountType === "documentdb" ? "DocumentDB cluster" : item.labDatabaseAccountType === "cosmosdb" ? "Cosmos DB account" : "Database account"; %>
+            <% const documentDbCredentials = item.labDatabaseAccountType === "documentdb" ? [`DocumentDB username: ${String(item.labVmUsername || "").replace(/_/g, "")}`, `DocumentDB password: ${item.labVmPassword || ""}`] : []; %>
+            <% const credentialText = [`Web URI: ${item.labWebUri || ""}`, `VM username: ${item.labVmUsername || ""}`, `VM password: ${item.labVmPassword || ""}`, `Portal username: ${item.labPortalUsername || ""}`, `Portal password: ${item.labPortalPassword || ""}`, `Resource group: ${item.labResourceGroup || ""}`, `${databaseAccountLabel}: ${item.labDatabaseAccountName || ""}`, ...documentDbCredentials, `Azure AI Foundry account: ${item.labFoundryAccountName || ""}`].join("\n"); %>
+            <details>
+              <summary>View Credentials</summary>
+              <% if (item.labWebUri) { %><p class="text-wrap"><strong>Web URI:</strong> <a href="<%= item.labWebUri %>" target="_blank" rel="noreferrer"><%= item.labWebUri %></a></p><% } %>
+              <% if (item.labVmUsername) { %><p><strong>VM username:</strong> <%= item.labVmUsername %></p><% } %>
+              <% if (item.labVmPassword) { %><p><strong>VM password:</strong> <%= item.labVmPassword %></p><% } %>
+              <% if (item.labPortalUsername) { %><p><strong>Portal username:</strong> <%= item.labPortalUsername %></p><% } %>
+              <% if (item.labPortalPassword) { %><p><strong>Portal password:</strong> <%= item.labPortalPassword %></p><% } %>
+              <% if (item.labResourceGroup) { %><p><strong>Resource group:</strong> <%= item.labResourceGroup %></p><% } %>
+              <% if (item.labDatabaseAccountName) { %>
+              <p><strong><%= databaseAccountLabel %>:</strong> <%= item.labDatabaseAccountName %></p>
+              <% if (item.labDatabaseAccountType === "documentdb" && item.labVmUsername) { %><p><strong>DocumentDB username:</strong> <%= String(item.labVmUsername).replace(/_/g, "") %></p><% } %>
+              <% if (item.labDatabaseAccountType === "documentdb" && item.labVmPassword) { %><p><strong>DocumentDB password:</strong> <%= item.labVmPassword %></p><% } %>
+              <% } %>
+              <% if (item.labFoundryAccountName) { %><p><strong>Azure AI Foundry account:</strong> <%= item.labFoundryAccountName %></p><% } %>
+              <button type="button" class="copy-lab-credentials" data-credentials="<%= credentialText %>">Copy Credentials</button>
+            </details>
+            <% } else { %>
+            Not set
+            <% } %>
+          </td>
+          <% if (!piiRestricted) { %>
+          <% if ((item.status || "registered") === "registered") { %>
+          <% const registrantAccessLink = `${publicBaseUrl}/registrant/login?email=${encodeURIComponent(item.attendeeEmail)}&code=${encodeURIComponent(item.registrationCode || "")}`; %>
+          <td><button type="button" class="copy-registrant-access-link" data-access-link="<%= registrantAccessLink %>">Copy Access Link</button></td>
+          <% } else { %>
+          <td>Not available</td>
+          <% } %>
+          <% } %>
+          <% if (hasRegistrationWriteAccess) { %>
+          <td data-action-cell>
+            <% if ((item.status || "registered") === "pending-approval") { %>
+            <form method="post" action="/publisher/events/<%= event.id %>/registrations/<%= item.id %>/approve" class="inline-form">
+              <button type="submit">Approve</button>
+            </form>
+            <form method="post" action="/publisher/events/<%= event.id %>/registrations/<%= item.id %>/reject" class="inline-form">
+              <input name="reason" placeholder="Reason" required />
+              <button type="submit" class="danger-button">Reject</button>
+            </form>
+            <% } else if ((item.status || "registered") === "registered") { %>
+            <form method="post" action="/publisher/events/<%= event.id %>/registrations/<%= item.id %>/attendance" class="inline-form attendance-toggle-form">
+              <input type="hidden" name="attended" value="<%= item.attended ? 'false' : 'true' %>" />
+              <button type="submit"><%= item.attended ? "Mark Not Attended" : "Mark Attended" %></button>
+            </form>
+            <form method="post" action="/publisher/events/<%= event.id %>/registrations/<%= item.id %>/deregister" class="inline-form">
+              <button type="submit" class="danger-button">De-register</button>
+            </form>
+            <% } else if ((item.status || "registered") === "deregistered") { %>
+            <form method="post" action="/publisher/events/<%= event.id %>/registrations/<%= item.id %>/register" class="inline-form">
+              <button type="submit">Register</button>
+            </form>
+            <% } %>
+          </td>
+          <% } %>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</section>
+
+<% if ((typeof teamLabRecipients !== "undefined" ? teamLabRecipients : []).length) { %>
+<section class="panel">
+  <h2>Speaker / Proctor Lab Deployments</h2>
+  <div class="compact-table-wrap">
+    <table class="compact-table">
+      <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Deployed Date</th><th>Lab Access</th></tr></thead>
+      <tbody>
+        <% teamLabRecipients.forEach((item) => { const lab = item.assignment || {}; %>
+        <tr>
+          <td><%= item.name %></td>
+          <td><%= item.email %></td>
+          <td><%= item.roles.join(" / ") %></td>
+          <td><%= item.labAccessUpdatedAt ? new Date(item.labAccessUpdatedAt).toLocaleString() : "Not deployed" %></td>
+          <td><a href="/publisher/events/<%= event.id %>/team-labs/<%= encodeURIComponent(lab.id) %>">View credentials</a></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+</section>
+<% } %>
+
+<script>
+  function updateSummaryCount(name, delta) {
+    const count = document.querySelector(`[data-summary-count="${name}"]`);
+    if (count) {
+      count.textContent = String(Number(count.textContent || 0) + delta);
+    }
+  }
+
+  function wireAttendanceForm(form) {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const button = form.querySelector('button[type="submit"]');
+      const attendedInput = form.querySelector('[name="attended"]');
+      const row = form.closest('tr');
+      const label = row?.querySelector('[data-attended-label]');
+      const previousValue = attendedInput.value === 'true' ? false : true;
+      const nextValue = attendedInput.value === 'true';
+
+      button.disabled = true;
+      button.textContent = 'Saving...';
+
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          headers: {
+            Accept: 'application/json',
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'fetch'
+          },
+          body: new URLSearchParams(new FormData(form))
+        });
+
+        if (!response.ok) {
+          throw new Error('Attendance update failed');
+        }
+
+        const result = await response.json();
+        const isAttended = Boolean(result.attended);
+        attendedInput.value = isAttended ? 'false' : 'true';
+        if (label) {
+          label.textContent = isAttended ? 'Yes' : 'No';
+        }
+        if (previousValue !== isAttended) {
+          updateSummaryCount('attended', isAttended ? 1 : -1);
+        }
+        button.textContent = isAttended ? 'Mark Not Attended' : 'Mark Attended';
+        EventIQ.notify('Attendance updated.', { type: 'success' });
+      } catch (error) {
+        console.error('Attendance update failed', error);
+        attendedInput.value = nextValue ? 'true' : 'false';
+        button.textContent = nextValue ? 'Mark Attended' : 'Mark Not Attended';
+        EventIQ.notify('Could not update attendance. Please try again.', { type: 'error' });
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+
+  document.querySelectorAll('.attendance-toggle-form').forEach((form) => {
+    wireAttendanceForm(form);
+  });
+
+  document.querySelectorAll('.copy-registrant-access-link').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const accessLink = button.dataset.accessLink;
+      if (!await EventIQ.copyText(accessLink, 'Registrant access link copied.')) return;
+      button.textContent = 'Copied';
+      window.setTimeout(() => { button.textContent = 'Copy Access Link'; }, 1400);
+    });
+  });
+
+  document.querySelectorAll('.copy-lab-credentials').forEach((button) => {
+    button.addEventListener('click', async () => {
+      if (!await EventIQ.copyText(button.dataset.credentials, 'Lab credentials copied. Share them only with this attendee.')) return;
+      button.textContent = 'Copied';
+      window.setTimeout(() => { button.textContent = 'Copy Credentials'; }, 1400);
+    });
+  });
+
+</script>
+
+<% if (hasRegistrationWriteAccess) { %>
+<section class="panel">
+  <h2>Upload Attendee List</h2>
+  <p class="muted">Upload an Excel/CSV sign-in sheet or Microsoft Teams attendance report. Matches are reconciled against active registrations by email first, then name.</p>
+  <form method="post" action="/publisher/events/<%= event.id %>/registrations/import/preview" enctype="multipart/form-data" class="stack-form">
+    <label>
+      Attendee File (.xlsx, .xls, .csv)
+      <input type="file" name="attendeeFile" accept=".xlsx,.xls,.csv" required />
+    </label>
+    <button type="submit">Preview Matches</button>
+  </form>
+
+  <% if (importPreview) { %>
+  <h3>Match Preview</h3>
+  <% const conflictCount = importPreview.filter((row) => row.conflict).length; %>
+  <p class="<%= conflictCount ? 'error' : 'status' %>">
+    <%= importPreview.length %> row(s) parsed — <%= importPreview.length - conflictCount %> matched, <%= conflictCount %> need review.
+  </p>
+  <form method="post" action="/publisher/events/<%= event.id %>/registrations/import/confirm" class="stack-form">
+    <div class="compact-table-wrap">
+      <table class="compact-table">
+        <thead>
+          <tr><th>Row</th><th>Input Email</th><th>Input Name</th><th>Matched Registrant</th><th>Reason</th><th>Mark Attended</th></tr>
+        </thead>
+        <tbody>
+          <% importPreview.forEach((row) => { %>
+          <tr class="<%= row.conflict ? 'import-row-conflict' : 'import-row-ok' %>">
+            <td><%= row.rowNumber %></td>
+            <td><%= row.inputEmail || "-" %></td>
+            <td><%= row.inputName || "-" %></td>
+            <td><%= row.matchedName ? `${row.matchedName} (${row.matchedEmail})` : "-" %></td>
+            <td>
+              <%= row.reason %>
+              <% if (row.matchedStatus === "deregistered" && !row.conflict) { %>
+              <span class="badge badge-warning">Will be re-registered</span>
+              <% } %>
+            </td>
+            <td>
+              <% if (row.matchedRegistrationId) { %>
+              <input type="checkbox" name="selectedRegistrationIds" value="<%= row.matchedRegistrationId %>" <%= row.selected ? "checked" : "" %> />
+              <% } else { %>
+              —
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <button type="submit">Mark Selected as Attended</button>
+  </form>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>Import Lab Access Details</h2>
+  <p class="muted">Upload a roster with Email/Name plus WebUri (or BastionUri), VmUsername, VmPassword, PortalUsername (or UserPrincipalName), TempPassword (or PortalPassword), ResourceGroup, DocumentDbCluster or CosmosServerlessAccount/CosmosProvisionedAccount, and FoundryAccount columns. Registrants see these on their dashboard once assigned.</p>
+  <form method="post" action="/publisher/events/<%= event.id %>/registrations/lab-access/import/preview" enctype="multipart/form-data" class="stack-form">
+    <label>
+      Lab Roster File (.xlsx, .xls, .csv)
+      <input type="file" name="labAccessFile" accept=".xlsx,.xls,.csv" required />
+    </label>
+    <button type="submit">Preview Matches</button>
+  </form>
+
+  <% if (labAccessPreview) { %>
+  <h3>Match Preview</h3>
+  <% const labConflictCount = labAccessPreview.filter((row) => row.conflict).length; %>
+  <p class="<%= labConflictCount ? 'error' : 'status' %>">
+    <%= labAccessPreview.length %> row(s) parsed — <%= labAccessPreview.length - labConflictCount %> matched, <%= labConflictCount %> need review.
+  </p>
+  <form method="post" action="/publisher/events/<%= event.id %>/registrations/lab-access/import/confirm" class="stack-form">
+    <input type="hidden" name="labAccessImportToken" value="<%= labAccessImportToken %>" />
+    <div class="compact-table-wrap">
+      <table class="compact-table">
+        <thead>
+          <tr><th>Row</th><th>Input Email</th><th>Input Name</th><th>Matched Registrant</th><th>Web URI</th><th>VM User</th><th>Resource Group</th><th>Database</th><th>Foundry</th><th>Reason</th><th>Assign</th></tr>
+        </thead>
+        <tbody>
+          <% let selectableIndex = -1; %>
+          <% labAccessPreview.forEach((row) => { %>
+          <% if (row.matchedRegistrationId) { selectableIndex += 1; } %>
+          <tr class="<%= row.conflict ? 'import-row-conflict' : 'import-row-ok' %>">
+            <td><%= row.rowNumber %></td>
+            <td><%= row.inputEmail || "-" %></td>
+            <td><%= row.inputName || "-" %></td>
+            <td><%= row.matchedName ? `${row.matchedName} (${row.matchedEmail})` : "-" %></td>
+            <td class="text-wrap"><%= row.labWebUri || "-" %></td>
+            <td><%= row.labVmUsername || "-" %></td>
+            <td><%= row.labResourceGroup || "-" %></td>
+            <td><%= row.labDatabaseAccountName || "-" %></td>
+            <td><%= row.labFoundryAccountName || "-" %></td>
+            <td><%= row.reason %></td>
+            <td>
+              <% if (row.matchedRegistrationId) { %>
+              <input type="checkbox" name="selectedRows" value="<%= selectableIndex %>" <%= row.selected ? "checked" : "" %> />
+              <% } else { %>
+              —
+              <% } %>
+            </td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <button type="submit">Assign Selected Lab Access</button>
+  </form>
+  <% } %>
+</section>
+<% } %>
+
+<%- include("partials/footer") %>

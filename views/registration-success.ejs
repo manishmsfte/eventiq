@@ -1,0 +1,35 @@
+<%- include("partials/header", { title: "Registration Confirmed", publisher, supervisor, registrant }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: event.title }, { label: "Registration Success" }] }) %>
+
+<section class="auth-wrap">
+  <% const isPending = String(registration.status || "").toLowerCase() === "pending-approval"; %>
+  <h1><%= isPending ? "Registration Pending Approval" : "Registration Confirmed" %></h1>
+  <% if (existing) { %>
+  <p class="status">You already had an active registration, so we reused your existing registration record.</p>
+  <% } %>
+  <% if (isPending) { %>
+  <p class="status">Your submission is pending approval, you will be notified once it is approved.</p>
+  <% } else { %>
+  <p data-notification="success">
+    Thanks <strong><%= registration.attendeeName %></strong>, you are registered for
+    <strong><%= event.partnerName ? `${event.title} - ${event.partnerName}` : event.title %></strong>.
+  </p>
+
+  <p><strong>Registration Code:</strong> <%= registration.registrationCode || "N/A" %></p>
+
+  <p>
+    Download your calendar invite to add this session to Outlook, Teams, or Google Calendar.
+  </p>
+  <% } %>
+
+  <div class="inline-actions">
+    <% if (!isPending) { %>
+    <a class="primary-link" href="/registrations/<%= registration.id %>/invite.ics">Download Invite (.ics)</a>
+    <a href="<%= deregisterLink %>">Quick Deregister</a>
+    <a href="/login?persona=registrant">Registrant Login</a>
+    <% } %>
+    <a href="/">Back to Events</a>
+  </div>
+</section>
+
+<%- include("partials/footer") %>

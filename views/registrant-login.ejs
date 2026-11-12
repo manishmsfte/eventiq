@@ -1,0 +1,30 @@
+<%- include("partials/header", { title: "Registrant Login", publisher, supervisor, registrant }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Registrant Login" }] }) %>
+
+<section class="auth-wrap">
+  <h1>Registrant Login</h1>
+  <p>Use your registered email and registration code to view upcoming and past events.</p>
+
+  <% if (error) { %>
+  <p class="error"><%= error %></p>
+  <% } %>
+
+  <form method="post" action="/registrant/login" class="stack-form">
+    <label>
+      Registered Email
+      <input type="email" name="attendeeEmail" required />
+    </label>
+
+    <label>
+      Registration Code
+      <input type="text" name="registrationCode" required />
+    </label>
+
+    <button type="submit">Open Dashboard</button>
+  </form>
+
+  <p class="muted top-gap">Need to deregister without login? Use the quick form below.</p>
+  <a href="/registrant/deregister">Quick Deregister</a>
+</section>
+
+<%- include("partials/footer") %>

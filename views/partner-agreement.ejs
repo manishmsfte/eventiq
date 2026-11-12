@@ -1,0 +1,68 @@
+<%- include("partials/header", { title: "EventIQ Program Terms and Conditions", publisher, supervisor, registrant, facilitator, currentUser }) %>
+<% if (!downloadedCopy) { %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "EventIQ Program Terms and Conditions" }] }) %>
+<% } %>
+
+<section class="hero slim agreement-hero">
+  <p class="eyebrow">Partner Program</p>
+  <h1>EventIQ Program Terms and Conditions</h1>
+  <p>Microsoft EventIQ Partner Agreement</p>
+  <dl class="agreement-metadata">
+    <div><dt>Agreement version</dt><dd><%= agreementVersion %></dd></div>
+    <div><dt><%= signed ? "Signed at" : "Generated at" %></dt><dd><%= generatedAt.toISOString() %> UTC</dd></div>
+    <div><dt>Terms</dt><dd><a class="agreement-terms-link" href="<%= publicBaseUrl %>/partners/agreement">EventIQ Terms &amp; Conditions</a></dd></div>
+  </dl>
+  <% if (!downloadedCopy) { %>
+  <a class="agreement-sample-link" href="/partners/agreement/sample.pdf<%= partner?.partnerName ? '?partnerName=' + encodeURIComponent(partner.partnerName) : '' %>">Download Sample Agreement (PDF)</a>
+  <% } %>
+</section>
+
+<% if (required) { %>
+<p class="error agreement-required-message">A signed agreement is required before this partner organization can create or duplicate events.</p>
+<% } %>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+
+<article class="panel agreement-document">
+  <p>This Microsoft EventIQ Partner Agreement (“Agreement”) is between Microsoft Corporation (“Microsoft”) and the partner organization identified below (“Partner”) and governs Partner’s participation in the EventIQ program.</p>
+  <% agreementSections.forEach((section) => { %>
+  <section>
+    <h2><%= section.title %></h2>
+    <% section.paragraphs.forEach((paragraph) => { %><p><%= paragraph %></p><% }) %>
+  </section>
+  <% }) %>
+</article>
+
+<% if (partner) { %>
+<section class="panel agreement-signature-card">
+  <h2><%= signed ? "Digital Signature" : "Sign for " + partner.partnerName %></h2>
+  <% if (signed) { %>
+  <dl class="agreement-metadata">
+    <div><dt>Partner</dt><dd><%= partner.partnerName %></dd></div>
+    <div><dt>Signing authority</dt><dd><%= partner.agreementSignerName %></dd></div>
+    <div><dt>Email</dt><dd><%= partner.agreementSignerEmail %></dd></div>
+    <div><dt>Signed at</dt><dd><%= partner.agreementSignedAt %> UTC</dd></div>
+  </dl>
+  <% if (!downloadedCopy) { %><a class="primary-link" href="/partners/agreement/download">Download Signed Agreement</a><% } %>
+  <% } else if (canSign) { %>
+  <form method="post" action="/partners/agreement/sign" class="stack-form">
+    <label>Signing Authority Name<input name="signerName" value="<%= partner.signingAuthorityName || partner.submitterName || '' %>" required /></label>
+    <label>Signing Authority Email<input type="email" name="signerEmail" value="<%= partner.signingAuthorityEmail || partner.submitterEmail || '' %>" required /></label>
+    <label class="agreement-checkbox">
+      <input type="checkbox" name="acceptAgreement" value="true" required />
+      <span>I represent that I have authority to bind <%= partner.partnerName %>, and I agree to the EventIQ Program Terms and Conditions shown above.</span>
+    </label>
+    <button type="submit">Digitally Sign Agreement</button>
+  </form>
+  <% } else { %>
+  <p>The primary publisher, <strong><%= partner.signingAuthorityName || partner.submitterName %></strong> (<%= partner.signingAuthorityEmail || partner.submitterEmail %>), must sign this agreement.</p>
+  <% } %>
+</section>
+<% } else { %>
+<section class="panel agreement-signature-card">
+  <h2>Partner signature</h2>
+  <p>Approved partner publishers can sign during onboarding or after signing in. Event creation and duplication remain unavailable until the agreement is signed.</p>
+  <a class="primary-link" href="/partners/apply">Apply to Become a Partner</a>
+</section>
+<% } %>
+
+<%- include("partials/footer") %>

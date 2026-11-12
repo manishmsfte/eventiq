@@ -1,0 +1,27 @@
+<%- include("partials/header", { title: "Publisher Login", publisher, supervisor, registrant }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Publisher Login" }] }) %>
+
+<section class="auth-wrap">
+  <h1>Publisher Console Login</h1>
+  <p>Only approved MSFT users can access the publishing console.</p>
+
+  <% if (error) { %>
+  <p class="error"><%= error %></p>
+  <% } %>
+
+  <form method="post" action="/publisher/login" class="stack-form">
+    <label>
+      Microsoft Email
+      <input type="email" name="email" required placeholder="name@microsoft.com" />
+    </label>
+
+    <label>
+      Publisher Password
+      <input type="password" name="password" required />
+    </label>
+
+    <button type="submit">Enter Console</button>
+  </form>
+</section>
+
+<%- include("partials/footer") %>

@@ -1,0 +1,11 @@
+<fieldset class="feedback-question feedback-rating-group<%= compact ? " feedback-rating-compact" : "" %>">
+  <legend class="<%= compact ? "feedback-visually-hidden" : "" %>"><%= label %></legend>
+  <span class="feedback-stars">
+    <% for (let star = 1; star <= 5; star += 1) { %>
+    <label class="feedback-star-option" for="<%= inputId %>-<%= star %>">
+      <input type="radio" id="<%= inputId %>-<%= star %>" name="<%= name %>" value="<%= star %>" aria-label="<%= star %> <%= star === 1 ? "star" : "stars" %>: <%= label %>" <%= String(rating) === String(star) ? "checked" : "" %> <%= required ? "required" : "" %> />
+      <span aria-hidden="true">&#9733;</span>
+    </label>
+    <% } %>
+  </span>
+</fieldset>

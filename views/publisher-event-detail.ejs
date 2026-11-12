@@ -1,0 +1,140 @@
+<%- include("partials/header", { title: event.title, publisher, supervisor, registrant, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Publisher", href: "/publisher" }, { label: event.title }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Event Detail</p>
+  <h1><%= event.title %></h1>
+  <a class="context-help-link" href="/help#publisher-flow">Publisher workflow help</a>
+  <p>
+    <span class="pill status <%= event.computedStatus %>"><%= event.computedStatus %></span>
+    <span class="pill <%= event.deliveryMode %>"><%= event.deliveryMode === "in-person" ? "in-person" : event.deliveryMode === "hybrid" ? "hybrid" : "virtual" %></span>
+    <% if (event.unlisted) { %><span class="pill unlisted">Unlisted</span><% } %>
+    <% if (event.partnerId) { %><span class="pill <%= event.publicationStatus || 'approved' %>">Publication: <%= event.publicationStatus || "approved" %></span><% } %>
+    <% if (accessLevel !== "owner") { %><span class="pill shared-access">Shared (<%= accessLevel %>)</span><% } %>
+  </p>
+  <p><%= event.city || "Virtual" %> | <%= new Date(event.startAt).toLocaleString() %> - <%= new Date(event.endAt).toLocaleString() %></p>
+</section>
+
+<% if (message) { %>
+<p class="status"><%= message %></p>
+<% } %>
+<% if (error) { %>
+<p class="error"><%= error %></p>
+<% } %>
+
+<% const switchablePersonas = typeof publisherEventPersonas !== "undefined" ? publisherEventPersonas : []; %>
+<% if (switchablePersonas.length) { %>
+<section class="panel status">
+  <h2>Join the event team workspace</h2>
+  <p>You are assigned to this event. Open the matching workspace without signing in again.</p>
+  <div class="inline-actions">
+    <% switchablePersonas.forEach((persona) => { %>
+    <form method="post" action="/publisher/events/<%= event.id %>/switch-persona">
+      <input type="hidden" name="persona" value="<%= persona %>" />
+      <button type="submit">Continue as <%= persona === "speaker" ? "Speaker" : "Proctor" %></button>
+    </form>
+    <% }) %>
+  </div>
+</section>
+<% } %>
+
+<% if (event.partnerId && publisher && !publisher.partnerId && (event.publicationStatus || "approved") !== "approved") { %>
+<section class="panel approval-panel">
+  <h2>Partner Event Approval</h2>
+  <div class="inline-actions">
+    <form method="post" action="/publisher/events/<%= event.id %>/publication/approve">
+      <button type="submit">Approve Event</button>
+    </form>
+    <form method="post" action="/publisher/events/<%= event.id %>/publication/reject" class="inline-form">
+      <input name="reason" placeholder="Reason required" required />
+      <button type="submit" class="danger-button">Reject Event</button>
+    </form>
+  </div>
+</section>
+<% } %>
+
+<section class="event-overview-columns">
+  <div class="panel event-overview-col">
+    <h2>Event Summary</h2>
+    <div class="kpi-grid kpi-grid-links event-summary-grid">
+      <a class="mini-card kpi-link" href="/publisher/events/<%= event.id %>/reports/registrations"><h3>Registrants</h3><p class="kpi-number"><%= event.registrationCount %></p></a>
+      <a class="mini-card kpi-link" href="/publisher/events/<%= event.id %>/reports/registrations"><h3>Attendance</h3><p class="kpi-number"><%= event.attendedCount %></p></a>
+      <a class="mini-card kpi-link" href="/publisher/events/<%= event.id %>/sessions#session-staffing"><h3>Speakers</h3><p class="kpi-number"><%= event.speakerCount %></p></a>
+      <a class="mini-card kpi-link" href="/publisher/events/<%= event.id %>/sessions#session-staffing"><h3>Proctors</h3><p class="kpi-number"><%= event.proctorCount %></p></a>
+      <a class="mini-card kpi-link" href="/publisher/events/<%= event.id %>/feedback"><h3>Feedback</h3><p class="kpi-number"><%= event.feedbackCount %></p></a>
+      <a class="mini-card kpi-link" href="/publisher/events/<%= event.id %>/manage#lab-provisioning"><h3>Labs Deployed</h3><p class="kpi-number"><%= event.deployedLabCount %></p></a>
+    </div>
+
+    <% if (event.unlisted) { %>
+    <div class="direct-link-box">
+      <h3>Direct Registration Link</h3>
+      <p class="muted">This event is unlisted. Share this link directly with attendees; it will not appear on the public home page.</p>
+      <div class="direct-link-row">
+        <input id="registrationLink" type="text" readonly value="<%= registrationLink %>" onclick="this.select()" />
+        <button type="button" class="icon-button copy-link-button" data-copy-target="registrationLink" title="Copy registration link" aria-label="Copy registration link">⧉</button>
+      </div>
+    </div>
+    <% } %>
+
+    <% if (event.holUri) { %>
+    <div class="direct-link-box">
+      <h3>Hands-on Labs</h3>
+      <p><a href="<%= event.holUri %>" target="_blank" rel="noreferrer"><%= event.holUri %></a></p>
+    </div>
+    <% } %>
+
+    <h3>Access</h3>
+    <% if (!collaborators.length) { %>
+    <p class="muted">Not shared with any other publisher yet.</p>
+    <% } else { %>
+    <ul class="collaborator-list">
+      <% collaborators.forEach((item) => { %>
+      <li class="collaborator-list-item">
+        <span><strong><%= item.collaboratorName || "Name unavailable" %></strong> &mdash; <%= item.collaboratorEmail %></span>
+        <span class="pill <%= item.accessLevel %>"><%= item.accessLevel %></span>
+        <% if (item.createdAt) { %><time datetime="<%= item.createdAt %>"><%= new Date(item.createdAt).toLocaleString() %></time><% } %>
+      </li>
+      <% }) %>
+    </ul>
+    <% } %>
+    <% if (accessLevel === "owner") { %>
+    <p><a href="/publisher/events/<%= event.id %>/manage#collaborators">Manage shared access</a></p>
+    <% } %>
+  </div>
+
+  <div class="panel event-overview-col">
+    <h2>Quick Actions</h2>
+    <div class="quick-actions-grid">
+      <a href="/publisher/events/<%= event.id %>/sessions">Event Team &amp; Sessions</a>
+      <a href="/publisher/events/<%= event.id %>/reports/registrations">Manage Registrations</a>
+      <a href="/publisher/events/<%= event.id %>/reports/organizations">Organization Report</a>
+      <a href="/publisher/events/<%= event.id %>/feedback">Feedback</a>
+      <a href="/events/<%= event.id %>/publisher-invite.ics">Download Event Invite (.ics)</a>
+      <a href="/publisher/events/<%= event.id %>/registrations/mail-merge.csv">Download Email List (Mail Merge)</a>
+      <% if (accessLevel === "owner" || accessLevel === "write") { %>
+      <a href="/publisher/events/<%= event.id %>/manage">Manage Event</a>
+      <% } %>
+    </div>
+
+    <h3>Feedback Form Link & QR Code</h3>
+    <p class="muted">Share this with attendees once the event is over.</p>
+    <p><a href="<%= event.feedbackLink %>" target="_blank" rel="noreferrer"><%= event.feedbackLink %></a></p>
+    <img src="<%= event.feedbackQrCodeDataUrl %>" alt="Feedback QR code" width="140" height="140" />
+  </div>
+</section>
+
+<script>
+  document.querySelectorAll('.copy-link-button').forEach((button) => {
+    button.addEventListener('click', async () => {
+      const input = document.getElementById(button.dataset.copyTarget);
+      if (!input) return;
+
+      if (!await EventIQ.copyText(input.value, 'Registration link copied.')) return;
+
+      button.title = 'Copied';
+      window.setTimeout(() => { button.title = 'Copy registration link'; }, 1400);
+    });
+  });
+</script>
+
+<%- include("partials/footer") %>

@@ -1,0 +1,9 @@
+<%- include("partials/header", { title }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Events", href: "/" }, { label: "Request could not be completed" }] }) %>
+<section class="auth-wrap">
+  <h1>Request could not be completed</h1>
+  <p class="error" role="alert"><%= error %></p>
+  <p>Review the message, return to the event workspace, and try again.</p>
+  <a class="primary-link" href="/">Return to Events</a>
+</section>
+<%- include("partials/footer") %>

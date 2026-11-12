@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Azure DocumentDB Perf Lab</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand-strip requires-auth hidden">
+        <div class="logo-chip">
+          <img src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/microsoftazure.svg" alt="Azure DocumentDB logo" />
+          <span>Azure DocumentDB</span>
+        </div>
+        <div class="logo-chip">
+          <img src="https://raw.githubusercontent.com/simple-icons/simple-icons/develop/icons/redis.svg" alt="Azure Managed Redis logo" />
+          <span>Azure Managed Redis</span>
+        </div>
+      </div>
+      <form id="loginForm" class="top-auth">
+        <input id="authUsername" type="text" placeholder="Username" required />
+        <input id="authPassword" type="password" placeholder="Password" required />
+        <button id="loginBtn" type="submit">Login</button>
+        <button id="logoutBtn" type="button" class="ghost hidden">Logout</button>
+      </form>
+      <nav class="quick-links requires-auth hidden">
+        <a href="#myReportsSection">My Reports</a>
+        <a href="#superadminPanel">Superadmin</a>
+        <a href="/AZURE_DOCUMENTDB_PERF_LAB_GUIDE.md" target="_blank" rel="noreferrer">User Guide</a>
+      </nav>
+      <div id="authStatus" class="result auth-strip"></div>
+    </header>
+
+    <main id="securedContent" class="shell hidden">
+      <section class="hero">
+        <p class="eyebrow">Performance Lab</p>
+        <h1>DocumentDB Benchmark Console</h1>
+        <p class="subtitle">
+          Upload sample JSON, run ingestion or query benchmarks, and compare with or without Redis cache.
+        </p>
+      </section>
+
+      <div class="workspace-grid">
+        <section class="card span-2">
+          <details open>
+            <summary>1. Upload Dataset</summary>
+            <form id="uploadForm">
+              <input id="jsonFiles" type="file" accept=".json,application/json" multiple required />
+              <button type="submit">Upload and infer schema</button>
+            </form>
+            <p class="disclaimer">
+              Privacy disclaimer: Do not upload PII or sensitive personal data. Microsoft is not responsible for customer-provided data content.
+            </p>
+            <div id="uploadResult" class="result"></div>
+          </details>
+        </section>
+
+        <section class="card">
+          <details open>
+            <summary>2. Ingestion Test</summary>
+            <form id="runForm">
+              <label>
+                Test name
+                <input id="testName" type="text" value="Baseline write test" required />
+              </label>
+              <label>
+                Upload ID
+                <input id="uploadId" type="text" placeholder="auto-filled after upload" required />
+              </label>
+              <label>
+                Collection name
+                <input id="collectionName" type="text" value="perf_ingest_runs" required />
+              </label>
+              <label>
+                Operation type
+                <select id="operationType">
+                  <option value="write" selected>write</option>
+                  <option value="read">read</option>
+                  <option value="query">query</option>
+                </select>
+              </label>
+              <label>
+                Input load (transactions per second)
+                <input id="tps" type="number" min="1" value="200" required />
+              </label>
+              <label>
+                Test duration in seconds
+                <input id="durationSeconds" type="number" min="1" value="60" required />
+              </label>
+              <label>
+                Azure DocumentDB instance tier
+                <select id="instanceSize">
+                  <option value="M30">M30</option>
+                  <option value="M40" selected>M40</option>
+                  <option value="M50">M50</option>
+                  <option value="M60">M60</option>
+                  <option value="M80">M80</option>
+                  <option value="M100">M100</option>
+                  <option value="M140">M140</option>
+                  <option value="M200">M200</option>
+                </select>
+              </label>
+              <label class="checkbox-row">
+                <input id="cleanupAfterTest" type="checkbox" checked />
+                Cleanup inserted/seeded data when test completes
+              </label>
+              <div class="result" id="requestSummary"></div>
+              <div class="action-row run-actions">
+                <button id="runPerfBtn" type="submit">Run performance test</button>
+                <button id="cancelJobBtn" type="button" class="ghost hidden">Cancel current run</button>
+              </div>
+            </form>
+          </details>
+        </section>
+
+        <section class="card">
+          <details open>
+            <summary>3. Query + Redis Test</summary>
+            <form id="queryConfigForm">
+              <label>
+                Query template
+                <select id="queryType">
+                  <option value="count" selected>count(*)</option>
+                  <option value="max">max(field1)</option>
+                  <option value="where1">where field1 = sample value</option>
+                  <option value="where2">where field1 and field2 = sample values</option>
+                  <option value="custom">custom find query</option>
+                </select>
+              </label>
+              <label>
+                Field 1
+                <input id="queryField1" type="text" placeholder="example: orderTotal" />
+              </label>
+              <label>
+                Field 2
+                <input id="queryField2" type="text" placeholder="example: region" />
+              </label>
+              <label>
+                Custom filter JSON
+                <textarea id="queryCustomFilter" rows="3" placeholder='{"region":"US"}'></textarea>
+              </label>
+              <label>
+                Custom projection JSON
+                <textarea id="queryCustomProjection" rows="2" placeholder='{"_id":0,"region":1,"orderTotal":1}'></textarea>
+              </label>
+              <label>
+                Custom sort JSON
+                <textarea id="queryCustomSort" rows="2" placeholder='{"orderTotal":-1}'></textarea>
+              </label>
+              <label>
+                Custom limit
+                <input id="queryCustomLimit" type="number" min="1" max="500" value="50" />
+              </label>
+              <label class="checkbox-row">
+                <input id="useRedisCache" type="checkbox" checked />
+                Enable Redis cache in front of DocumentDB for query benchmarks
+              </label>
+              <label>
+                Azure Managed Redis SKU
+                <select id="redisSkuSelect"></select>
+              </label>
+              <div class="action-row query-actions">
+                <button id="provisionRedisBtn" type="button" class="ghost">Provision Azure Managed Redis</button>
+                <button id="runQueryBtn" type="button">Run query benchmark</button>
+                <button id="cancelQueryBtn" type="button" class="ghost hidden">Cancel current run</button>
+              </div>
+            </form>
+            <div id="queryConfigStatus" class="result"></div>
+          </details>
+        </section>
+      </div>
+
+      <section class="card">
+        <details open>
+          <summary>4. Live Results</summary>
+          <div id="progressWrap" class="progress-wrap">
+            <div class="progress-head">
+              <span>Progress</span>
+              <span id="progressLabel">0%</span>
+            </div>
+            <div class="progress-track">
+              <div id="progressBar" class="progress-bar"></div>
+            </div>
+          </div>
+          <div id="exportActions" class="export-actions hidden">
+            <button id="downloadCsv" type="button">Export CSV</button>
+            <button id="downloadPdf" type="button">Export PDF</button>
+          </div>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>Ingestion Per-Second Average Latency</h3>
+              <canvas id="ingestLatencyChart" width="560" height="180"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>Ingestion Per-Second Throughput</h3>
+              <canvas id="ingestThroughputChart" width="560" height="180"></canvas>
+            </div>
+          </div>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>Query Per-Second Average Latency</h3>
+              <canvas id="queryLatencyChart" width="560" height="180"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>Query Per-Second Throughput</h3>
+              <canvas id="queryThroughputChart" width="560" height="180"></canvas>
+            </div>
+          </div>
+          <div class="charts-grid">
+            <div class="chart-card">
+              <h3>Azure DocumentDB Cluster CPU Utilization Trend (Per-Second View)</h3>
+              <canvas id="cpuUtilChart" width="560" height="180"></canvas>
+            </div>
+            <div class="chart-card">
+              <h3>Azure DocumentDB Cluster Memory Utilization Trend (Per-Second View)</h3>
+              <canvas id="memoryUtilChart" width="560" height="180"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <h3>Azure DocumentDB Cluster IOPS Trend (Per-Second View)</h3>
+            <canvas id="iopsChart" width="1140" height="180"></canvas>
+            <p class="disclaimer">These CPU, memory, and IOPS charts represent Azure DocumentDB cluster resource utilization sampled from Azure Monitor during the selected benchmark run window.</p>
+          </div>
+          <div class="results-grid">
+            <div class="table-card"><h3>Run Summary</h3><div id="summaryTableWrap"></div></div>
+            <div class="table-card"><h3>Overall Percentiles for Azure DocumentDB Benchmark Latency</h3><div id="percentileTableWrap"></div></div>
+            <div class="table-card"><h3>Recent Per-Second Percentiles for Azure DocumentDB Benchmark Latency</h3><div id="windowTableWrap"></div></div>
+            <div class="table-card"><h3>Azure DocumentDB Cluster Resource Utilization (CPU, Memory, IOPS)</h3><div id="resourceMetricsWrap"></div></div>
+          </div>
+          <div id="runStatus" class="result"></div>
+        </details>
+      </section>
+
+      <section id="myReportsSection" class="card">
+        <details>
+          <summary>5. My Reports</summary>
+          <div class="section-head">
+            <h2>My Reports</h2>
+            <button id="refreshMyReportsBtn" type="button" class="ghost">Refresh</button>
+          </div>
+          <div class="table-card compact-card"><h3>My Test Summary</h3><div id="mySummaryWrap"></div></div>
+          <div class="table-card compact-card">
+            <h3>My Test History</h3>
+            <div class="toolbar-row">
+              <input id="mySearch" type="text" placeholder="Filter by test name, ID, collection" />
+              <select id="myStatusFilter">
+                <option value="all" selected>All Status</option>
+                <option value="queued">Queued</option>
+                <option value="running">Running</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="failed">Failed</option>
+              </select>
+              <select id="myPageSize">
+                <option value="10">10 / page</option>
+                <option value="20" selected>20 / page</option>
+                <option value="50">50 / page</option>
+              </select>
+            </div>
+            <div id="myTestsWrap"></div>
+            <div class="pager-row">
+              <button id="myPrevPage" type="button" class="ghost tiny-btn">Previous</button>
+              <span id="myPageInfo" class="pager-info">Page 1 of 1</span>
+              <button id="myNextPage" type="button" class="ghost tiny-btn">Next</button>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <section id="superadminPanel" class="card hidden">
+        <details>
+          <summary>6. Superadmin Console</summary>
+          <div class="section-head">
+            <h2>Superadmin Console</h2>
+            <button id="refreshAdminBtn" type="button" class="ghost">Refresh</button>
+          </div>
+          <div class="admin-grid">
+            <div class="table-card compact-card">
+              <h3>Create Login</h3>
+              <form id="createUserForm">
+                <label>Username<input id="newUsername" type="text" placeholder="new username" required /></label>
+                <label>Password<input id="newPassword" type="password" placeholder="new password" required /></label>
+                <label>
+                  Role
+                  <select id="newUserRole">
+                    <option value="user" selected>user</option>
+                    <option value="admin">admin</option>
+                    <option value="superadmin">superadmin</option>
+                  </select>
+                </label>
+                <button type="submit">Create or update user</button>
+              </form>
+              <div id="createUserStatus" class="result"></div>
+            </div>
+            <div class="table-card compact-card"><h3>User Logins</h3><div id="adminUsersWrap"></div></div>
+          </div>
+          <div class="table-card compact-card"><h3>Aggregated Test Report</h3><div id="adminAggregateWrap"></div></div>
+          <div class="table-card compact-card">
+            <h3>All User Tests</h3>
+            <div class="toolbar-row toolbar-row-wide">
+              <input id="adminSearch" type="text" placeholder="Filter by user, test name, ID" />
+              <input id="adminOwnerFilter" type="text" placeholder="Owner username" />
+              <select id="adminStatusFilter">
+                <option value="all" selected>All Status</option>
+                <option value="queued">Queued</option>
+                <option value="running">Running</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+                <option value="failed">Failed</option>
+              </select>
+              <select id="adminPageSize">
+                <option value="10">10 / page</option>
+                <option value="20" selected>20 / page</option>
+                <option value="50">50 / page</option>
+              </select>
+            </div>
+            <div id="adminTestsWrap"></div>
+            <div class="pager-row">
+              <button id="adminPrevPage" type="button" class="ghost tiny-btn">Previous</button>
+              <span id="adminPageInfo" class="pager-info">Page 1 of 1</span>
+              <button id="adminNextPage" type="button" class="ghost tiny-btn">Next</button>
+            </div>
+          </div>
+        </details>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
+

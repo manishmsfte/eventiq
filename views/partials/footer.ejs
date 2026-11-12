@@ -1,0 +1,13 @@
+    </main>
+    <footer class="site-footer">
+      <a href="/partners/agreement">EventIQ Program Terms and Conditions</a>
+      <span>&copy; <%= new Date().getUTCFullYear() %> Microsoft</span>
+    </footer>
+    <dialog id="notificationDialog" class="notification-dialog" aria-labelledby="notificationTitle" aria-describedby="notificationBody">
+      <h2 id="notificationTitle">Update</h2>
+      <div id="notificationBody" aria-live="polite"></div>
+      <div class="notification-actions"><button type="button" data-dismiss-notification>OK</button></div>
+    </dialog>
+    <script src="/notifications.js?v=<%= assetVersion %>" defer></script>
+  </body>
+</html>

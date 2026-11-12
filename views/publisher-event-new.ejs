@@ -1,0 +1,177 @@
+<%- include("partials/header", { title: "Create Event", publisher, supervisor, registrant, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Publisher", href: "/publisher" }, { label: "Create Event" }] }) %>
+
+<section class="hero slim publisher-create-hero">
+  <p class="eyebrow">Publisher Workspace</p>
+  <h1>Create a New Event</h1>
+  <p>Set the core event details first. Speakers and proctors are invited after the event is created.</p>
+</section>
+
+<% if (message) { %>
+<p class="create-event-message <%= isError ? 'error-banner' : 'status-banner' %>"><%= message %></p>
+<% } %>
+
+<section class="panel publisher-event-create-panel">
+  <form method="post" action="/publisher/events" class="stack-form publisher-event-create-form">
+    <% if (formData?.duplicateFrom) { %>
+    <input type="hidden" name="duplicateFrom" value="<%= formData.duplicateFrom %>" />
+    <% } %>
+
+    <div class="create-event-column create-event-primary">
+      <h2 class="create-event-section-heading">Event Content</h2>
+      <label>
+        <span class="field-label">Event Title <span class="required">*</span></span>
+        <input type="text" name="title" value="<%= formData?.title || '' %>" required />
+      </label>
+      <label>
+        Description
+        <div class="richtext-toolbar" data-for="eventDescription">
+          <button type="button" data-wrap="**|**">B</button>
+          <button type="button" data-wrap="*|*"><em>I</em></button>
+          <button type="button" data-prefix="- ">Bullets</button>
+          <button type="button" data-wrap="[small]|[/small]">Small</button>
+          <button type="button" data-wrap="[large]|[/large]">Large</button>
+        </div>
+        <textarea name="description" id="eventDescription" rows="13" class="create-event-description"><%= formData?.description || '' %></textarea>
+        <small class="muted">Supports bullets, bold, italics, small text, and large text.</small>
+      </label>
+    </div>
+
+    <div class="create-event-column create-event-details">
+      <h2 class="create-event-section-heading">Event Details</h2>
+      <div class="publisher-create-grid">
+        <label>
+          <span class="field-label">Start Date & Time <span class="required">*</span></span>
+          <input type="datetime-local" name="startAt" value="<%= formData?.startAt || '' %>" required />
+        </label>
+        <label>
+          <span class="field-label">End Date & Time <span class="required">*</span></span>
+          <input type="datetime-local" name="endAt" value="<%= formData?.endAt || '' %>" required />
+        </label>
+        <label>
+          <span class="field-label">Time Zone <span class="required">*</span></span>
+          <select name="timeZone" required>
+            <option value="">Select time zone...</option>
+            <% const selectedTimeZone = formData?.timeZone || ''; %>
+            <% if (selectedTimeZone && !(Array.isArray(timeZones) ? timeZones : []).includes(selectedTimeZone)) { %>
+            <option value="<%= selectedTimeZone %>" selected><%= selectedTimeZone %></option>
+            <% } %>
+            <% (Array.isArray(timeZones) ? timeZones : []).forEach((tz) => { %>
+            <option value="<%= tz %>" <%= selectedTimeZone === tz ? 'selected' : '' %>><%= tz %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label>
+          <span class="field-label">Max Seats <span class="required">*</span></span>
+          <input type="number" name="maxSeats" value="<%= formData?.maxSeats || '' %>" min="1" required />
+        </label>
+        <label>
+          <span class="field-label">Delivery Mode <span class="required">*</span></span>
+          <select name="deliveryMode" required>
+            <option value="virtual" <%= (formData?.deliveryMode || 'virtual') === 'virtual' ? 'selected' : '' %>>Virtual</option>
+            <option value="in-person" <%= formData?.deliveryMode === 'in-person' ? 'selected' : '' %>>In-person</option>
+            <option value="hybrid" <%= formData?.deliveryMode === 'hybrid' ? 'selected' : '' %>>Hybrid</option>
+          </select>
+        </label>
+        <label id="cityField">
+          <span class="field-label">City <span class="required">*</span></span>
+          <input type="text" name="city" value="<%= formData?.city || '' %>" />
+          <small>Required for in-person and hybrid events.</small>
+        </label>
+        <label class="full-span" id="addressField">
+          <span class="field-label">In-person Address <span class="required">*</span></span>
+          <input type="text" name="address" value="<%= formData?.address || '' %>" placeholder="Required for in-person and hybrid" />
+        </label>
+        <label class="full-span" id="teamsField">
+          <span class="field-label">Teams Meeting Link <span class="required">*</span></span>
+          <input type="url" name="teamsLink" value="<%= formData?.teamsLink || '' %>" placeholder="Required for virtual and hybrid" />
+        </label>
+        <label class="full-span" id="holField">
+          <span class="field-label">Hands-on Labs (GitHub URI / Link)</span>
+          <input type="url" name="holUri" value="<%= formData?.holUri || '' %>" placeholder="https://github.com/AzureCosmosDB/..." />
+        </label>
+        <label class="full-span unlisted-toggle">
+          <input type="checkbox" name="unlisted" value="true" <%= formData?.unlisted ? "checked" : "" %> />
+          <span>Unlisted — hide from the public home page. Registration still works via direct link.</span>
+        </label>
+      </div>
+      <button type="submit"><%= publisher?.partnerId ? "Submit Event for Approval" : "Publish Event" %></button>
+    </div>
+  </form>
+</section>
+
+<script>
+  const deliveryModeSelect = document.querySelector('[name="deliveryMode"]');
+  const cityField = document.getElementById('cityField');
+  const addressField = document.getElementById('addressField');
+  const teamsField = document.getElementById('teamsField');
+  const cityInput = document.querySelector('[name="city"]');
+  const addressInput = document.querySelector('[name="address"]');
+  const teamsInput = document.querySelector('[name="teamsLink"]');
+
+  function syncRequiredFields() {
+    const mode = deliveryModeSelect.value;
+    const needsLocation = mode === 'in-person' || mode === 'hybrid';
+    const needsTeams = mode === 'virtual' || mode === 'hybrid';
+
+    cityField.style.display = needsLocation ? 'grid' : 'none';
+    addressField.style.display = needsLocation ? 'grid' : 'none';
+    teamsField.style.display = needsTeams ? 'grid' : 'none';
+
+    cityInput.required = needsLocation;
+    addressInput.required = needsLocation;
+    teamsInput.required = needsTeams;
+
+    if (!needsLocation) {
+      cityInput.value = '';
+      addressInput.value = '';
+    }
+
+    if (!needsTeams) {
+      teamsInput.value = '';
+    }
+  }
+
+  deliveryModeSelect.addEventListener('change', syncRequiredFields);
+  syncRequiredFields();
+
+  document.querySelectorAll('.richtext-toolbar').forEach((toolbar) => {
+    const target = document.getElementById(toolbar.dataset.for);
+    toolbar.addEventListener('click', (event) => {
+      const button = event.target.closest('button');
+      if (!button || !target) {
+        return;
+      }
+
+      const start = target.selectionStart;
+      const end = target.selectionEnd;
+      const selected = target.value.slice(start, end) || 'text';
+      let replacement = selected;
+
+      if (button.dataset.wrap) {
+        const [before, after] = button.dataset.wrap.split('|');
+        replacement = `${before}${selected}${after}`;
+      } else if (button.dataset.prefix) {
+        replacement = selected
+          .split('\n')
+          .map((line) => `${button.dataset.prefix}${line || 'item'}`)
+          .join('\n');
+      }
+
+      target.setRangeText(replacement, start, end, 'select');
+      target.focus();
+    });
+  });
+
+  // Prevent accidental double-submit (double click / slow network) from creating duplicate events.
+  const createEventForm = document.querySelector('.publisher-event-create-form');
+  createEventForm.addEventListener('submit', () => {
+    const submitButton = createEventForm.querySelector('button[type="submit"]');
+    if (submitButton) {
+      submitButton.disabled = true;
+      submitButton.textContent = 'Publishing...';
+    }
+  });
+</script>
+
+<%- include("partials/footer") %>

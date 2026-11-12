@@ -1,0 +1,58 @@
+<%- include("partials/header", { title: "Organization Report", publisher, supervisor, registrant, facilitator, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Publisher", href: "/publisher" }, { label: event.title, href: `/publisher/events/${event.id}` }, { label: "Organization Report" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Publisher Reporting</p>
+  <h1><%= event.title %></h1>
+  <a class="context-help-link" href="/help#publishers">Organization report help</a>
+  <p>Status: <span class="pill status <%= event.computedStatus %>"><%= event.computedStatus %></span></p>
+</section>
+
+<section class="panel">
+  <h2>Organization Registrant Report</h2>
+  <% if (message) { %>
+  <p class="status"><%= message %></p>
+  <% } %>
+  <% if (piiRestricted) { %>
+  <p class="error">PII masking is active. Unmasked attendee data is restricted to authorized identity only.</p>
+  <% } %>
+  <% if (!organizations.length) { %>
+  <p>No organization data available yet.</p>
+  <% } else { %>
+  <div class="inline-actions top-gap">
+    <a href="/publisher/events/<%= event.id %>/reports/organizations.xlsx">Download Excel Report</a>
+  </div>
+  <div class="kpi-grid">
+    <article class="mini-card"><h3>Total Registrations</h3><p class="kpi-number"><%= totalRegistered %></p></article>
+    <article class="mini-card"><h3>Total Attendees</h3><p class="kpi-number"><%= totalAttended %></p></article>
+  </div>
+  <div class="compact-table-wrap">
+    <table class="compact-table">
+      <thead>
+        <tr>
+          <th>Organization</th>
+          <th>Registrations</th>
+          <th>Attendees</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% organizations.forEach((item) => { %>
+        <tr>
+          <td class="text-wrap"><%= item.organization %></td>
+          <td><%= item.registered %></td>
+          <td><%= item.attended %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+
+  <div class="inline-actions top-gap">
+    <a href="/publisher/events/<%= event.id %>/reports/registrations">Manage Registrations</a>
+    <a href="/publisher/events/<%= event.id %>/feedback">Feedback</a>
+    <a href="/publisher/events/<%= event.id %>/sessions">Event Team & Sessions</a>
+  </div>
+</section>
+
+<%- include("partials/footer") %>

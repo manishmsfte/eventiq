@@ -1,0 +1,47 @@
+<h2>Your lab details</h2>
+<% if (!labAccess) { %>
+<p class="muted"><%= lookupEmail ? "No uploaded lab details were found for this email. Check the email you registered with." : "Use your registered email to find your lab details. You do not need to do this to submit feedback." %></p>
+<form method="get" action="/events/<%= event.id %>/feedback" class="feedback-lab-lookup">
+  <input type="hidden" name="view" value="lab" />
+  <% if (selectedSession?.id) { %><input type="hidden" name="sessionId" value="<%= selectedSession.id %>" /><% } %>
+  <label>Registered email<input type="email" name="email" value="<%= lookupEmail || "" %>" placeholder="name@example.com" required /></label>
+  <button type="submit">Look up lab details</button>
+</form>
+<% } %>
+<% const feedbackPortalTempPass = labAccess?.labPortalPassword || (labAccess?.labPortalUsername && labAccess?.labVmPassword ? labAccess.labVmPassword : ""); %>
+<% const feedbackLabDatabaseType = labAccess?.labDatabaseAccountType || (/documentdb/i.test(event.title || "") ? "documentdb" : /(cosmos|nosql)/i.test(event.title || "") ? "cosmosdb" : ""); %>
+<div class="feedback-lab-grid">
+  <% if (event.holUri) { %>
+  <div><strong>Hands-on labs</strong><p><a href="<%= event.holUri %>" target="_blank" rel="noreferrer"><%= event.holUri %></a></p></div>
+  <% } %>
+  <% if (labAccess?.labWebUri || labAccess?.labVmUsername || labAccess?.labVmPassword) { %>
+  <div>
+    <strong>VM details</strong>
+    <% if (labAccess?.labWebUri) { %><p><a href="<%= labAccess.labWebUri %>" target="_blank" rel="noreferrer">Open VM</a></p><% } %>
+    <% if (labAccess?.labVmUsername) { %><p><strong>User name:</strong> <%= labAccess.labVmUsername %></p><% } %>
+    <% if (labAccess?.labVmPassword) { %><p><strong>Password:</strong> <%= labAccess.labVmPassword %></p><% } %>
+  </div>
+  <% } %>
+  <% if (labAccess?.labPortalUsername || feedbackPortalTempPass) { %>
+  <div>
+    <strong>Azure Portal</strong>
+    <p><a href="https://portal.azure.com" target="_blank" rel="noreferrer">Open Azure Portal</a></p>
+    <% if (labAccess?.labPortalUsername) { %><p><strong>User name:</strong> <%= labAccess.labPortalUsername %></p><% } %>
+    <% if (feedbackPortalTempPass) { %><p><strong>Password:</strong> <%= feedbackPortalTempPass %></p><% } %>
+  </div>
+  <% } %>
+  <% if (labAccess?.labResourceGroup) { %>
+  <div><strong>Resource group</strong><p><%= labAccess.labResourceGroup %></p></div>
+  <% } %>
+  <% if (labAccess?.labDatabaseAccountName) { %>
+  <div>
+    <strong><%= feedbackLabDatabaseType === "documentdb" ? "Azure DocumentDB Cluster Name" : feedbackLabDatabaseType === "cosmosdb" ? "Azure Cosmos DB Account Name" : "Database Account Name" %></strong>
+    <p><%= labAccess.labDatabaseAccountName %></p>
+    <% if (feedbackLabDatabaseType === "documentdb" && labAccess?.labVmUsername) { %><p><strong>Azure DocumentDB User Name:</strong> <%= String(labAccess.labVmUsername).replace(/_/g, "") %></p><% } %>
+    <% if (feedbackLabDatabaseType === "documentdb" && labAccess?.labVmPassword) { %><p><strong>Azure DocumentDB Password:</strong> <%= labAccess.labVmPassword %></p><% } %>
+  </div>
+  <% } %>
+  <% if (labAccess?.labFoundryAccountName) { %>
+  <div><strong>Azure AI Foundry Name</strong><p><%= labAccess.labFoundryAccountName %></p></div>
+  <% } %>
+</div>

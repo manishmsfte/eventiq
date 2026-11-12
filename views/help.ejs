@@ -1,0 +1,58 @@
+<%- include("partials/header", { title: "Help Center", publisher, supervisor, registrant, facilitator, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Help Center" }] }) %>
+
+<section class="hero slim help-hero">
+  <p class="eyebrow">Help Center</p>
+  <h1>Workshop Registration Guide</h1>
+  <p>Find the workflow for your role, from registration through feedback and lab access.</p>
+</section>
+
+<nav class="help-nav" aria-label="Help topics">
+  <a href="#roles">Roles</a>
+  <a href="#registrants">Registrants</a>
+  <a href="#publishers">Publishers</a>
+  <a href="#lab-deployments">Lab Deployments</a>
+  <a href="#supervisors">Supervisors</a>
+  <a href="#feedback">Feedback</a>
+</nav>
+
+<section class="help-guide">
+  <section id="roles" class="help-section">
+    <h2>Roles and access</h2>
+    <p>Use the single Login page to choose your persona. Publishers and supervisors use their account credentials. Event team members use Facilitator and set their own password from the secure invitation link. Registrants log in with the email address and registration code from their confirmation.</p>
+    <p>Publishers own events and can share read or write access with other publishers. Facilitators see their assigned event work only and may act as Speaker, Proctor, or both in different sessions. Supervisors manage publisher-facing accounts and reporting.</p>
+    <p>Publishers, supervisors, speakers, and proctors can select <a href="/account/profile">My Profile</a>, then Change Password. Enter your current password and confirm a new password with at least 10 characters, including uppercase, lowercase, a number, and a special character. This also works when signed in as Facilitator. If you have forgotten your current password, ask a supervisor to reset it from Users.</p>
+  </section>
+
+  <section id="registrants" class="help-section">
+    <h2>Registrant flow</h2>
+    <ol><li>Browse available events and select Register.</li><li>Enter your contact details and organization information, then submit the registration.</li><li>Keep the confirmation email and registration code. Use them with your email to sign in to My Registrations.</li><li>Review event details, calendar information, and any lab access supplied for your registration. Deregister from the dashboard when plans change.</li></ol>
+  </section>
+
+  <section id="publishers" class="help-section">
+    <h2>Publisher flow</h2>
+    <p id="publisher-flow">Create an event from the Publisher Console, then open its workspace to manage the schedule, audience, and delivery details. Publishers can update event information, control listed visibility, share access, prepare follow-up messaging, or cancel the event when needed.</p>
+    <p id="session-grid">Use Event Team & Sessions to invite facilitators, set availability, apply a Speaker or Proctor to multiple sessions, and maintain the running order including breaks.</p>
+    <p id="attendance">Use Manage Registrations to review and approve partner event registrations, reconcile attendees, update registration status, mark attendance, export reports and mail-merge data, and import lab access information. Organization Reports summarize registrations by organization. Event sharing grants another publisher read-only or write access; only the owner manages collaborators.</p>
+  </section>
+
+  <section id="lab-deployments" class="help-section">
+    <h2>Lab deployments</h2>
+    <p>Lab provisioning is requested from an event's Manage page for active registrants that do not already have lab access. Select registrations by sequence with a closed range such as <strong>24-27</strong>. Use an open range such as <strong>1-</strong> or <strong>2-</strong> to continue through the last active registration.</p>
+    <p>The registration sequence selects people; physical lab numbers are allocated separately after the highest number ever used for that event. This prevents a later request from reusing an existing Azure environment. Deregistered, reserved, and already assigned registrations in the requested range are skipped automatically, so repeating <code>1-</code> deploys only the remaining labs. Submit the next request after the active batch finishes. Up to 100 labs deploy simultaneously. Each registration receives its lab details as soon as that lab is ready; the request does not wait for the entire batch. Deployment duration must be 1 to 720 hours; the default duration is 72 hours. The batch records both the requested registration sequence and allocated physical labs, workshop type, capacity, import progress, expiry, and any dispatch or import errors. Supervisors can review every event-linked batch in Lab Deployments.</p>
+  </section>
+
+  <section id="supervisors" class="help-section">
+    <h2>Supervisor flow</h2>
+    <p>Use the Supervisor Console to create publisher, speaker, and proctor accounts; update account names, passwords, and active status; review events; and send a test notification.</p>
+    <p>Under Partner Applications, select Edit Submitter Email to correct a partner contact and move any linked login to the new address. The existing password, roles, and event access are retained. The old email no longer signs in, and existing sessions must sign in again. Unused invitation links for the old address are revoked. An email already used by another account or partner application cannot be selected. Historical agreement signatures remain unchanged.</p>
+    <p>Customer Intelligence consolidates selected event registrations by normalized organization. Download the current report or import enrichment values for segment, region, and ACR measures. The account, event, customer, and lab lists support in-page search and filters.</p>
+  </section>
+
+  <section id="feedback" class="help-section">
+    <h2>Feedback</h2>
+    <p>After an event, registrants can submit feedback from their registration experience. Publishers review event feedback in the event workspace and can configure a follow-up message when appropriate.</p>
+  </section>
+</section>
+
+<%- include("partials/footer") %>

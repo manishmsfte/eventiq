@@ -1,0 +1,68 @@
+<%- include("partials/header", { title: "Compliance Checklist", publisher, supervisor, registrant, facilitator, currentUser }) %>
+
+<section class="auth-wrap">
+  <h1>Privacy Review Checklist</h1>
+  <p>
+    Use this checklist to prepare compliance artifacts for form and survey privacy review.
+    This page does not submit data externally.
+  </p>
+
+  <h2>Privacy Review Inputs</h2>
+  <form class="stack-form" onsubmit="return false;">
+    <label>
+      Invitation method
+      <textarea rows="2" readonly><%= defaults.invitationMethod %></textarea>
+    </label>
+
+    <label>
+      Consent source for outreach
+      <textarea rows="2" readonly><%= defaults.consentSource %></textarea>
+    </label>
+
+    <label>
+      Survey tool in use
+      <input type="text" value="<%= defaults.toolName %>" readonly />
+    </label>
+
+    <label>
+      Survey or form link
+      <input type="text" value="<%= defaults.surveyLink %>" readonly />
+    </label>
+
+    <label>
+      Privacy statement link
+      <input type="text" value="<%= defaults.privacyLink %>" readonly />
+    </label>
+
+    <label>
+      PII inventory
+      <input type="text" value="<%= defaults.piiInventory %>" readonly />
+    </label>
+
+    <label>
+      DSR handling plan
+      <textarea rows="3" readonly><%= defaults.dsrPlan %></textarea>
+    </label>
+
+    <label>
+      Sender identity for communications
+      <input type="text" value="<%= defaults.senderInfo %>" readonly />
+    </label>
+  </form>
+
+  <h2>Operational Endpoints</h2>
+  <ul>
+    <li><strong>Retention purge:</strong> POST /admin/data-retention/purge with retentionDays and dryRun.</li>
+    <li><strong>DSR delete:</strong> POST /admin/data-subject/delete with email and dryRun.</li>
+    <li><strong>Bootstrap status:</strong> GET /admin/bootstrap/status.</li>
+  </ul>
+
+  <h2>Notes</h2>
+  <ul>
+    <li>External forms should include the Microsoft Privacy Statement link.</li>
+    <li>Internal employee or supplier data collections should use the Data Protection Notice link.</li>
+    <li>Do not claim data collection is anonymous, non-shareable, or fully confidential.</li>
+  </ul>
+</section>
+
+<%- include("partials/footer") %>

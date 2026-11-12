@@ -1,0 +1,542 @@
+<%- include("partials/header", { title: "Event Registration", publisher, supervisor, registrant, facilitator, currentUser, bodyClass: "registration-page", showEventPartner: false }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: event.title }, { label: "Register" }] }) %>
+<% const registrationFormData = typeof formData !== "undefined" && formData ? formData : {}; %>
+<% const registrationIsPreviewEvent = typeof isPreviewEvent !== "undefined" && isPreviewEvent; %>
+<% const registrationDescription = String(event.description || "Hands-on guided lab session.").trim().replace(/\.\s*(?:\*{1,2})?text(?:\*{1,2})?\s*$/i, "."); %>
+<% const partnerContactConfigured = isPartnerContactConfigured(event); %>
+<% const partnerContactAvailable = partnerContactConfigured && isPartnerContactCountryAllowed(registrationFormData.country, countries); %>
+
+<section class="auth-wrap registration-smart-wrap">
+  <p class="registration-kicker"><%= event.partnerId ? "Partner Event Registration" : "Event Registration" %></p>
+  <h1 class="registration-title"><%= event.partnerName ? `${event.title} by ${event.partnerName}${/\bpartner$/i.test(event.partnerName) ? "" : " Partner"}` : event.title %></h1>
+  <a class="context-help-link" href="/help#registrants">Help with registration</a>
+
+  <div class="registration-layout">
+    <aside class="registration-context-col">
+      <section class="event-description-line" aria-label="Event description">
+        <%- renderRichTextDescription(registrationDescription) %>
+      </section>
+
+      <% if (event.partnerId) { %>
+      <section class="partner-disclosure" aria-label="Partner information">
+        <div class="partner-brand-panel">
+          <img class="partner-registration-logo" src="/partners/<%= event.partnerId %>/logo" alt="<%= event.partnerName %> logo" />
+          <strong><%= event.partnerName %></strong>
+        </div>
+        <div>
+          <h2>Microsoft is proud to work with <%= event.partnerName %> to deliver this workshop.</h2>
+          <p>Any personal data we collect from you will be used by Microsoft and <%= event.partnerName %> to administer the event. For complete information about each company's data collection and use practices, read their privacy statements.</p>
+          <ul>
+            <li><a href="<%= event.partnerWebsiteUrl %>" target="_blank" rel="noreferrer"><%= event.partnerName %> Website</a></li>
+            <li><a href="<%= event.partnerPrivacyPolicyUrl %>" target="_blank" rel="noreferrer"><%= event.partnerName %> Privacy Policy</a></li>
+            <li><a href="http://go.microsoft.com/fwlink/?LinkId=521839" target="_blank" rel="noreferrer">Microsoft Privacy Policy</a></li>
+          </ul>
+        </div>
+      </section>
+      <% } %>
+
+      <section class="compliance-disclosure" aria-label="Privacy Notice">
+        <h2 class="compliance-title">Privacy Notice</h2>
+        <div class="compliance-copy">
+          <p>Microsoft is committed to protecting your privacy. The personal information you provide in this form will be used to register you for this event and communicate event-related information, including event-related follow-up. This form does not collect contact permissions for Microsoft marketing. Your information will be processed in accordance with the <a href="http://go.microsoft.com/fwlink/?LinkId=521839" target="_blank" rel="noreferrer">Microsoft Privacy Statement</a>.</p>
+          <p>For more information about how Microsoft collects, uses, and protects your personal data, please review the <a href="http://go.microsoft.com/fwlink/?LinkId=521839" target="_blank" rel="noreferrer">Microsoft Privacy Statement</a>.</p>
+        </div>
+      </section>
+
+      <section class="teams-experience-note" aria-label="Microsoft Teams experience note">
+        <strong>Note:</strong> Microsoft Teams delivers a rich, interactive experience that works best with the Teams app. We recommend downloading the app if you don't have it, as not all browsers are supported. When you join this event, your name, email and/or phone number may be viewable by other session participants in the attendee list. By joining this event, you're agreeing to this experience.
+      </section>
+
+    </aside>
+
+    <div class="registration-form-col">
+      <div class="event-facts-row registration-event-facts-right" aria-label="Event details">
+        <div class="fact-item">
+          <span class="fact-label">Date</span>
+          <span class="fact-value"><%= new Date(event.startAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric" }) %></span>
+        </div>
+        <div class="fact-item">
+          <span class="fact-label">Time</span>
+          <span class="fact-value"><%= formatDualTimezone(event.startAt, event.timeZone) %> - <%= formatDualTimezone(event.endAt, event.timeZone) %></span>
+        </div>
+        <div class="fact-item">
+          <span class="fact-label">Location</span>
+          <span class="fact-value"><%= event.city || "Virtual" %> | <%= event.deliveryMode === "in-person" ? "In-person" : event.deliveryMode === "hybrid" ? "Hybrid" : "Virtual" %></span>
+        </div>
+      </div>
+
+      <% if (error) { %>
+      <div class="reg-error-block">
+        <p class="error"><%= error %></p>
+        <% if (typeof existingRegistrationCode !== 'undefined' && existingRegistrationCode) { %>
+        <p class="reg-code-hint">Your registration code: <strong class="reg-code"><%= existingRegistrationCode %></strong></p>
+        <p class="reg-login-link-wrap">
+          Already registered? <a href="/login?persona=registrant&attendeeEmail=<%= encodeURIComponent(registrationFormData.attendeeEmail || '') %>&registrationCode=<%= encodeURIComponent(existingRegistrationCode) %>">Login as Registrant</a>.
+        </p>
+        <% } %>
+      </div>
+      <% } %>
+
+      <form method="post" action="/events/<%= event.id %>/register" class="stack-form registration-form registration-smart-form" id="registrationForm" novalidate>
+    <div class="registration-grid">
+    <p class="full-span mandatory-note"><span class="required">*</span> Mandatory fields</p>
+
+    <div class="full-span section-divider">
+      <h3>Attendee Details</h3>
+    </div>
+
+    <div class="full-span name-grid" role="group" aria-label="Attendee name">
+      <label>
+        <span class="field-label">Salutation</span>
+        <select name="salutation" class="salutation-select">
+          <option value="" <%= !registrationFormData.salutation ? "selected" : "" %>>Select</option>
+          <option value="Mr." <%= registrationFormData.salutation === "Mr." ? "selected" : "" %>>Mr.</option>
+          <option value="Ms." <%= registrationFormData.salutation === "Ms." ? "selected" : "" %>>Ms.</option>
+          <option value="Mrs." <%= registrationFormData.salutation === "Mrs." ? "selected" : "" %>>Mrs.</option>
+          <option value="Dr." <%= registrationFormData.salutation === "Dr." ? "selected" : "" %>>Dr.</option>
+          <option value="Prof." <%= registrationFormData.salutation === "Prof." ? "selected" : "" %>>Prof.</option>
+          <option value="Mx." <%= registrationFormData.salutation === "Mx." ? "selected" : "" %>>Mx.</option>
+        </select>
+      </label>
+
+      <label>
+        <span class="field-label">First Name <span class="required">*</span></span>
+        <input type="text" name="firstName" id="firstName" value="<%= registrationFormData.firstName || "" %>" required aria-required="true" />
+        <span class="error-message"></span>
+      </label>
+
+      <label>
+        <span class="field-label">Middle Name</span>
+        <input type="text" name="middleName" value="<%= registrationFormData.middleName || "" %>" />
+      </label>
+
+      <label>
+        <span class="field-label">Last Name <span class="required">*</span></span>
+        <input type="text" name="lastName" id="lastName" value="<%= registrationFormData.lastName || "" %>" required aria-required="true" />
+        <span class="error-message"></span>
+      </label>
+    </div>
+
+    <div class="full-span section-divider">
+      <h3>Contact Details</h3>
+    </div>
+
+    <label>
+      <span class="field-label">Email <span class="required">*</span></span>
+      <input type="email" name="attendeeEmail" id="attendeeEmail" value="<%= registrationFormData.attendeeEmail || "" %>" required aria-required="true" />
+      <span class="error-message"></span>
+    </label>
+
+    <label>
+      <span class="field-label">Country <span class="required">*</span></span>
+      <select name="country" id="countrySelect" required aria-required="true">
+        <option value="">Select a country...</option>
+        <% (Array.isArray(countries) ? countries : []).forEach((country) => { %>
+        <option value="<%= country %>" <%= registrationFormData.country === country ? "selected" : "" %>><%= country %></option>
+        <% }) %>
+      </select>
+      <span class="error-message"></span>
+    </label>
+
+    <label>
+      <span class="field-label">Phone Number</span>
+      <div class="phone-inline">
+        <input type="tel" name="phoneCountryCode" id="phoneCountryCode" class="phone-code" value="<%= registrationFormData.phoneCountryCode || "+1" %>" placeholder="+1" readonly />
+        <input type="tel" name="phoneNumber" id="phoneNumber" value="<%= registrationFormData.phoneNumber || "" %>" placeholder="1234567890" pattern="[0-9]+" />
+      </div>
+      <span class="error-message"></span>
+    </label>
+
+    <% if (registrationIsPreviewEvent) { %>
+    <label class="full-span">
+      <span class="field-label">I hereby represent that I am authorized to participate in this program <span class="required">*</span></span>
+      <select name="previewAuthorization" required aria-required="true">
+        <option value="">Select option</option>
+        <option value="yes" <%= registrationFormData.previewAuthorization === "yes" ? "selected" : "" %>>Yes</option>
+        <option value="no" <%= registrationFormData.previewAuthorization === "no" ? "selected" : "" %>>No</option>
+      </select>
+      <small class="muted">
+        No previews can be started without relevant admin consent. Review guidelines: 
+        <a href="https://microsoft.sharepoint.com/teams/CAI-Privacy/SitePages/Programs.aspx" target="_blank" rel="noreferrer">Programs</a>
+      </small>
+      <span class="error-message"></span>
+    </label>
+    <% } %>
+
+    <div class="full-span section-divider">
+      <h3>Organization Details</h3>
+    </div>
+
+    <label class="organization-company-field">
+      <span class="field-label">Company Name<span class="required" id="companyNameRequiredMark" style="display:<%= /@(gmail\.com|outlook\.com|outlook\.live\.com|hotmail\.com|live\.com)$/i.test(String(registrationFormData.attendeeEmail || "").trim()) ? "inline" : "none" %>;"> *</span></span>
+      <input
+        type="text"
+        name="companyName"
+        id="companyName"
+        placeholder="Your company or organization"
+        value="<%= registrationFormData.companyName || "" %>"
+        list="knownOrganizations"
+        autocomplete="organization"
+      />
+      <datalist id="knownOrganizations">
+        <% (Array.isArray(knownOrganizations) ? knownOrganizations : []).forEach((organization) => { %>
+        <option value="<%= organization %>"></option>
+        <% }) %>
+      </datalist>
+      <small class="muted">Select a suggested organization when available.</small>
+      <small class="muted" id="companyNameHint" style="display:<%= /@(gmail\.com|outlook\.com|outlook\.live\.com|hotmail\.com|live\.com)$/i.test(String(registrationFormData.attendeeEmail || "").trim()) ? "inline" : "none" %>;">Required for Gmail and Outlook addresses</small>
+      <span class="error-message"></span>
+    </label>
+
+    <label class="job-role-field">
+      <span class="field-label">Job Role</span>
+      <select name="jobRole">
+        <option value="">Select a role...</option>
+        <% (Array.isArray(jobRoles) ? jobRoles : []).forEach((role) => { %>
+        <option value="<%= role %>" <%= registrationFormData.jobRole === role ? "selected" : "" %>><%= role %></option>
+        <% }) %>
+      </select>
+    </label>
+
+    <% if (event.partnerId) { %>
+    <label class="full-span organization-size-field">
+      <span class="field-label">What best describes the size of your organization? <span class="required">*</span></span>
+      <select name="organizationSize" required aria-required="true">
+        <option value="">Select an organization size...</option>
+        <% organizationSizes.forEach((size) => { %>
+        <option value="<%= size %>" <%= registrationFormData.organizationSize === size ? "selected" : "" %>><%= size %></option>
+        <% }) %>
+      </select>
+      <span class="error-message"></span>
+    </label>
+    <% } %>
+
+    <div class="full-span section-divider">
+      <h3>Preferences</h3>
+    </div>
+
+    <% if (event.partnerId) { %>
+    <div class="full-span privacy-check-row partner-optin-row">
+      <p id="partnerContactNotice" class="muted" role="status" <%= partnerContactAvailable ? "hidden" : "" %>><%= !partnerContactConfigured ? "Partner contact permissions are unavailable for this event. You can still register." : !registrationFormData.country ? "Select your country to view partner contact permission options." : "Partner contact permissions are not collected for the selected country. You can still register for this event." %></p>
+      <label id="partnerOptInLabel" class="checkbox-row partner-optin-check" <%= partnerContactAvailable ? "" : "hidden" %>>
+        <input id="partnerOptIn" type="checkbox" name="partnerOptIn" value="yes" <%= partnerContactAvailable && registrationFormData.partnerOptIn === true ? "checked" : "" %> <%= partnerContactAvailable ? "" : "disabled" %> />
+        <span class="partner-optin-copy"><%= event.partnerName %> may contact me with information about their products, services and events <a href="<%= event.partnerPrivacyPolicyUrl %>" target="_blank" rel="noreferrer"><%= event.partnerName %> Privacy Statement</a></span>
+      </label>
+      <noscript><p class="muted">Enable JavaScript to update partner contact permission options when you select a country. You can register without giving partner contact permissions.</p></noscript>
+    </div>
+    <% } %>
+
+    <label class="full-span discovery-field">
+      <span class="field-label">How did you hear about this event?</span>
+      <textarea name="eventDiscoverySource" rows="1" class="compact-discovery" placeholder="Newsletter, manager referral, social media, internal channel"><%= registrationFormData.eventDiscoverySource || "" %></textarea>
+    </label>
+
+    <button type="submit" class="full-span registration-submit">Register</button>
+    </div>
+  </form>
+    </div>
+  </div>
+</section>
+
+<script>
+  const countryPhoneCodes = <%- JSON.stringify(countryPhoneCodes || {}) %>;
+  const partnerContactExcludedCountries = <%- JSON.stringify(partnerContactExcludedCountries) %>;
+  const partnerContactConfigured = <%- JSON.stringify(partnerContactConfigured) %>;
+  
+  const emailInput = document.getElementById('attendeeEmail');
+  const firstNameInput = document.getElementById('firstName');
+  const lastNameInput = document.getElementById('lastName');
+  const companyInput = document.getElementById('companyName');
+  const countrySelect = document.getElementById('countrySelect');
+  const partnerOptInInput = document.getElementById('partnerOptIn');
+  const partnerOptInLabel = document.getElementById('partnerOptInLabel');
+  const partnerContactNotice = document.getElementById('partnerContactNotice');
+  const phoneCountryCodeInput = document.getElementById('phoneCountryCode');
+  const phoneNumberInput = document.getElementById('phoneNumber');
+  const form = document.getElementById('registrationForm');
+  const storageKey = `registration-draft-<%= event.id %>`;
+
+  // Draft recovery to prevent data loss if the page is refreshed.
+  function restoreDraft() {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) {
+        return;
+      }
+
+      const draft = JSON.parse(raw);
+      if (!draft || typeof draft !== 'object') {
+        return;
+      }
+
+      for (const [name, value] of Object.entries(draft)) {
+        const field = form?.elements?.namedItem(name);
+        if (!field || field.disabled || name === 'partnerOptIn') {
+          continue;
+        }
+
+        if (field.type === 'checkbox') {
+          field.checked = Boolean(value);
+        } else if ((field.tagName === 'INPUT' || field.tagName === 'TEXTAREA') && !field.value) {
+          field.value = String(value || '');
+        } else if (field.tagName === 'SELECT' && !field.value) {
+          field.value = String(value || '');
+        }
+      }
+    } catch (_) {
+      // Ignore invalid draft payloads.
+    }
+  }
+
+  function persistDraft() {
+    if (!form) {
+      return;
+    }
+
+    const draft = {};
+    const fields = form.querySelectorAll('input[name], select[name], textarea[name]');
+    fields.forEach((field) => {
+      if (!field.name || field.name === 'partnerOptIn') {
+        return;
+      }
+
+      draft[field.name] = field.type === 'checkbox' ? field.checked : field.value;
+    });
+
+    localStorage.setItem(storageKey, JSON.stringify(draft));
+  }
+
+  function clearDraft() {
+    localStorage.removeItem(storageKey);
+  }
+
+  function syncPartnerContactPermission() {
+    if (!partnerOptInInput || !partnerOptInLabel || !partnerContactNotice) {
+      return;
+    }
+
+    const country = countrySelect?.value || '';
+    const available = Boolean(
+      partnerContactConfigured && country && !partnerContactExcludedCountries.includes(country)
+    );
+    partnerOptInInput.disabled = !available;
+    partnerOptInLabel.hidden = !available;
+    partnerContactNotice.hidden = available;
+    if (!available) {
+      partnerOptInInput.checked = false;
+      partnerContactNotice.textContent = !partnerContactConfigured
+        ? 'Partner contact permissions are unavailable for this event. You can still register.'
+        : !country
+          ? 'Select your country to view partner contact permission options.'
+          : 'Partner contact permissions are not collected for the selected country. You can still register for this event.';
+    }
+  }
+
+  // Derive company name from email domain
+  function deriveCompanyName(email) {
+    const value = String(email || '').trim().toLowerCase();
+    const at = value.indexOf('@');
+    if (at < 1 || at === value.length - 1) {
+      return '';
+    }
+
+    const domain = value.slice(at + 1).split('.')[0] || '';
+    return domain
+      .split(/[-_]/g)
+      .filter(Boolean)
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+  }
+
+  function requiresManualCompanyName(email) {
+    const domain = String(email || '').trim().toLowerCase().split('@')[1] || '';
+    return ['gmail.com', 'outlook.com', 'outlook.live.com', 'hotmail.com', 'live.com'].includes(domain);
+  }
+
+  const companyNameRequiredMark = document.getElementById('companyNameRequiredMark');
+  const companyNameHint = document.getElementById('companyNameHint');
+
+  // gmail.com cannot be auto-associated with a company; require manual entry instead.
+  function syncCompanyRequirement() {
+    if (!emailInput || !companyInput) {
+      return;
+    }
+
+    const requiresCompanyName = requiresManualCompanyName(emailInput.value);
+    companyInput.required = requiresCompanyName;
+    if (companyNameRequiredMark) {
+      companyNameRequiredMark.style.display = requiresCompanyName ? '' : 'none';
+    }
+    if (companyNameHint) {
+      companyNameHint.style.display = requiresCompanyName ? '' : 'none';
+    }
+  }
+
+  // Auto-fill company name based on email domain, except for gmail.com where
+  // there is no real company to derive; the registrant must type it in.
+  if (emailInput && companyInput) {
+    const syncCompany = () => {
+      syncCompanyRequirement();
+      if (!companyInput.value.trim() && !requiresManualCompanyName(emailInput.value)) {
+        companyInput.value = deriveCompanyName(emailInput.value);
+      }
+    };
+
+    emailInput.addEventListener('blur', syncCompany);
+    emailInput.addEventListener('change', syncCompany);
+    emailInput.addEventListener('input', syncCompanyRequirement);
+    syncCompany();
+  }
+
+  // Auto-fill phone country code based on selected country
+  if (countrySelect && phoneCountryCodeInput) {
+    const syncPhoneCode = () => {
+      const country = countrySelect.value;
+      const code = countryPhoneCodes[country] || '+1';
+      phoneCountryCodeInput.value = code;
+    };
+
+    countrySelect.addEventListener('change', syncPhoneCode);
+  }
+
+  // Form validation
+  countrySelect?.addEventListener('change', syncPartnerContactPermission);
+  if (form) {
+    restoreDraft();
+    syncPartnerContactPermission();
+    const draftFields = form.querySelectorAll('input[name], select[name], textarea[name]');
+    draftFields.forEach((field) => {
+      field.addEventListener('change', persistDraft);
+      field.addEventListener('blur', persistDraft);
+    });
+
+    form.addEventListener('submit', (e) => {
+      syncPartnerContactPermission();
+      let isValid = true;
+
+      // Check email format
+      if (emailInput && emailInput.value) {
+        const emailRegex = /^[^\s@,]+@[^\s@,]+\.[^\s@,]+$/;
+        if (!emailRegex.test(emailInput.value)) {
+          showError(emailInput, 'Please enter a valid email address');
+          isValid = false;
+        } else {
+          clearError(emailInput);
+        }
+      }
+
+      // Check required split-name fields
+      if (firstNameInput && !String(firstNameInput.value || '').trim()) {
+        showError(firstNameInput, 'First name is required');
+        isValid = false;
+      } else if (firstNameInput) {
+        clearError(firstNameInput);
+      }
+
+      if (lastNameInput && !String(lastNameInput.value || '').trim()) {
+        showError(lastNameInput, 'Last name is required');
+        isValid = false;
+      } else if (lastNameInput) {
+        clearError(lastNameInput);
+      }
+
+      // Check phone number (digits only)
+      if (phoneNumberInput && phoneNumberInput.value) {
+        const phoneRegex = /^[0-9]{7,15}$/;
+        if (!phoneRegex.test(phoneNumberInput.value.replace(/[^\d]/g, ''))) {
+          showError(phoneNumberInput, 'Please enter a valid phone number (7-15 digits)');
+          isValid = false;
+        } else {
+          clearError(phoneNumberInput);
+        }
+      }
+
+      // Check country is selected
+      if (countrySelect && !countrySelect.value) {
+        showError(countrySelect, 'Please select a country');
+        isValid = false;
+      } else {
+        clearError(countrySelect);
+      }
+
+      if (!isValid) {
+        e.preventDefault();
+      } else {
+        clearDraft();
+      }
+    });
+
+    // Real-time validation
+    if (emailInput) {
+      emailInput.addEventListener('blur', () => {
+        if (emailInput.value) {
+          const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+          if (!emailRegex.test(emailInput.value)) {
+            showError(emailInput, 'Please enter a valid email address');
+          } else {
+            clearError(emailInput);
+          }
+        }
+      });
+    }
+
+    if (phoneNumberInput) {
+      phoneNumberInput.addEventListener('blur', () => {
+        if (phoneNumberInput.value) {
+          const phoneRegex = /^[0-9]{7,15}$/;
+          if (!phoneRegex.test(phoneNumberInput.value.replace(/[^\d]/g, ''))) {
+            showError(phoneNumberInput, 'Please enter a valid phone number (7-15 digits)');
+          } else {
+            clearError(phoneNumberInput);
+          }
+        }
+      });
+    }
+
+    if (firstNameInput) {
+      firstNameInput.addEventListener('blur', () => {
+        if (!String(firstNameInput.value || '').trim()) {
+          showError(firstNameInput, 'First name is required');
+        } else {
+          clearError(firstNameInput);
+        }
+      });
+    }
+
+    if (lastNameInput) {
+      lastNameInput.addEventListener('blur', () => {
+        if (!String(lastNameInput.value || '').trim()) {
+          showError(lastNameInput, 'Last name is required');
+        } else {
+          clearError(lastNameInput);
+        }
+      });
+    }
+  }
+
+  function showError(input, message) {
+    const label = input.closest('label');
+    if (label) {
+      const errorSpan = label.querySelector('.error-message');
+      if (errorSpan) {
+        errorSpan.textContent = message;
+        errorSpan.style.display = 'block';
+      }
+      label.classList.add('error');
+    }
+  }
+
+  function clearError(input) {
+    const label = input.closest('label');
+    if (label) {
+      const errorSpan = label.querySelector('.error-message');
+      if (errorSpan) {
+        errorSpan.textContent = '';
+        errorSpan.style.display = 'none';
+      }
+      label.classList.remove('error');
+    }
+  }
+</script>
+
+<%- include("partials/footer") %>

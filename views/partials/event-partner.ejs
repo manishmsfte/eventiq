@@ -1,0 +1,9 @@
+<% if (event?.partnerId) { %>
+<span class="event-partner-brand<%= typeof compact !== "undefined" && compact ? " event-partner-brand-compact" : "" %>" role="note" aria-label="Partner event">
+  <img src="/partners/<%= event.partnerId %>/logo" alt="<%= event.partnerName || "Event partner" %> logo" />
+  <span>
+    <strong>Partner event</strong>
+    <span><%= event.partnerName || "Event partner" %></span>
+  </span>
+</span>
+<% } %>

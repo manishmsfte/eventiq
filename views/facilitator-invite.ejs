@@ -1,0 +1,34 @@
+<%- include("partials/header", { title: "Set Facilitator Password", publisher, supervisor, registrant, facilitator, currentUser }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Event Team Invitation</p>
+  <h1>Set your facilitator password</h1>
+  <% if (invitation) { %>
+  <p><%= invitation.name || invitation.email %>, create one password for your event-team account. Your Speaker or Proctor role is assigned separately for each session.</p>
+  <% } %>
+</section>
+
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+<% if (success) { %>
+<section class="panel">
+  <p class="status"><%= success %></p>
+  <a class="primary-link" href="/login?persona=facilitator">Sign in as Facilitator</a>
+</section>
+<% } else if (invitation) { %>
+<section class="panel narrow-panel">
+  <form method="post" action="/facilitator/invite/<%= token %>" class="stack-form">
+    <label>
+      New Password
+      <input type="password" name="password" minlength="10" autocomplete="new-password" required>
+    </label>
+    <label>
+      Confirm Password
+      <input type="password" name="confirmPassword" minlength="10" autocomplete="new-password" required>
+    </label>
+    <p class="muted">Use at least 10 characters with uppercase, lowercase, a number, and a special character.</p>
+    <button type="submit">Set Password</button>
+  </form>
+</section>
+<% } %>
+
+<%- include("partials/footer") %>

@@ -1,0 +1,213 @@
+<%- include("partials/header", { title: "Publisher Console", publisher, supervisor, registrant, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Publisher" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Publisher Workspace</p>
+  <h1>Event Workspace</h1>
+  <a class="context-help-link" href="/help#publishers">Publisher help</a>
+  <p>Choose an event to drill into registrations, speakers, proctors, feedback, and operational actions.</p>
+</section>
+
+<% if (message) { %>
+<p class="status"><%= message %></p>
+<% } %>
+
+<% if (publisher?.partnerId) { %>
+<section class="panel">
+  <div class="section-head"><div><h2><%= publisher.partnerName %> Users</h2><p class="muted">New users are permanently associated with your partner organization.</p></div></div>
+  <div class="split">
+    <form method="post" action="/publisher/partner-users" class="stack-form">
+      <label>Persona<select name="userType"><option value="publisher">Publisher</option><option value="speaker">Speaker</option><option value="proctor">Proctor</option></select></label>
+      <label>Name<input name="name" required /></label>
+      <label>Email<input type="email" name="email" required /></label>
+      <label>Temporary Password<input type="password" name="password" minlength="10" required /></label>
+      <button type="submit">Add Partner User</button>
+    </form>
+    <div>
+      <h3>Active Partner Users</h3>
+      <% if (!partnerUsers.length) { %><p>No partner users found.</p><% } else { %>
+      <ul><% partnerUsers.forEach((user) => { %><li><%= user.name || user.email %> (<%= user.userType %>)</li><% }) %></ul>
+      <% } %>
+    </div>
+  </div>
+</section>
+<% } %>
+
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>Your Events</h2>
+      <p class="muted">One focused list: filter quickly, then open a single event workspace.</p>
+    </div>
+    <% if (partnerAgreement?.required) { %>
+    <a class="primary-link disabled-link" href="/partners/agreement">Sign Agreement to Create Events</a>
+    <% } else { %>
+    <a class="primary-link" href="/publisher/events/new">Create New Event</a>
+    <% } %>
+  </div>
+
+  <form method="get" action="/publisher" class="filters facet-row">
+    <label>
+      Search
+      <input type="text" name="search" value="<%= filters.search %>" placeholder="Title, description, city, time zone" />
+    </label>
+
+    <label>
+      Status Filter
+      <select name="status">
+        <option value="upcoming" <%= statusFilter === "upcoming" ? "selected" : "" %>>Upcoming</option>
+        <option value="ongoing" <%= statusFilter === "ongoing" ? "selected" : "" %>>Ongoing</option>
+        <option value="completed" <%= statusFilter === "completed" ? "selected" : "" %>>Completed</option>
+        <option value="canceled" <%= statusFilter === "canceled" ? "selected" : "" %>>Canceled</option>
+        <option value="all" <%= statusFilter === "all" ? "selected" : "" %>>All</option>
+      </select>
+    </label>
+
+    <label>
+      Mode
+      <select name="mode">
+        <option value="">All</option>
+        <option value="virtual" <%= filters.mode === "virtual" ? "selected" : "" %>>Virtual</option>
+        <option value="in-person" <%= filters.mode === "in-person" ? "selected" : "" %>>In-person</option>
+      </select>
+    </label>
+
+    <label>
+      Time Zone
+      <select name="timeZone">
+        <option value="">All</option>
+        <% timeZones.forEach((tz) => { %>
+        <option value="<%= tz %>" <%= filters.timeZone === tz ? "selected" : "" %>><%= tz %></option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      Visibility
+      <select name="visibility">
+        <option value="listed" <%= visibilityFilter === "listed" ? "selected" : "" %>>Listed only</option>
+        <option value="unlisted" <%= visibilityFilter === "unlisted" ? "selected" : "" %>>Unlisted only</option>
+        <option value="all" <%= visibilityFilter === "all" ? "selected" : "" %>>All events</option>
+      </select>
+    </label>
+
+    <button type="submit">Apply</button>
+  </form>
+
+  <div class="facet-pills" role="group" aria-label="Publisher event status quick filters">
+    <a class="facet-pill <%= statusFilter === "upcoming" ? "active" : "" %>" href="/publisher?status=upcoming&search=<%= encodeURIComponent(filters.search || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&scope=<%= scopeFilter %>&visibility=<%= visibilityFilter %>">Upcoming <span><%= statusCounts.upcoming %></span></a>
+    <a class="facet-pill <%= statusFilter === "ongoing" ? "active" : "" %>" href="/publisher?status=ongoing&search=<%= encodeURIComponent(filters.search || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&scope=<%= scopeFilter %>&visibility=<%= visibilityFilter %>">Ongoing <span><%= statusCounts.ongoing %></span></a>
+    <a class="facet-pill <%= statusFilter === "completed" ? "active" : "" %>" href="/publisher?status=completed&search=<%= encodeURIComponent(filters.search || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&scope=<%= scopeFilter %>&visibility=<%= visibilityFilter %>">Completed <span><%= statusCounts.completed %></span></a>
+    <a class="facet-pill <%= statusFilter === "canceled" ? "active" : "" %>" href="/publisher?status=canceled&search=<%= encodeURIComponent(filters.search || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&scope=<%= scopeFilter %>&visibility=<%= visibilityFilter %>">Canceled <span><%= statusCounts.canceled %></span></a>
+    <a class="facet-pill <%= statusFilter === "all" ? "active" : "" %>" href="/publisher?status=all&search=<%= encodeURIComponent(filters.search || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&scope=<%= scopeFilter %>&visibility=<%= visibilityFilter %>">All <span><%= statusCounts.all %></span></a>
+  </div>
+
+  <div class="facet-pills" role="group" aria-label="Ownership scope quick filters">
+    <a class="facet-pill <%= scopeFilter === "all" ? "active" : "" %>" href="/publisher?status=<%= statusFilter %>&search=<%= encodeURIComponent(filters.search || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&scope=all&visibility=<%= visibilityFilter %>">All Events <span><%= scopeCounts.all %></span></a>
+    <a class="facet-pill <%= scopeFilter === "owned" ? "active" : "" %>" href="/publisher?status=<%= statusFilter %>&search=<%= encodeURIComponent(filters.search || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&scope=owned&visibility=<%= visibilityFilter %>">My Events <span><%= scopeCounts.owned %></span></a>
+    <a class="facet-pill <%= scopeFilter === "shared" ? "active" : "" %>" href="/publisher?status=<%= statusFilter %>&search=<%= encodeURIComponent(filters.search || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&scope=shared&visibility=<%= visibilityFilter %>">Shared With Me <span><%= scopeCounts.shared %></span></a>
+  </div>
+
+  <% if (!events.length) { %>
+  <div class="empty-card">
+    <p>No events match the selected filters.</p>
+    <% if (statusCounts.all || scopeCounts.all) { %>
+    <a class="primary-link" href="/publisher?status=all&scope=all&visibility=all">Clear filters and show all accessible events</a>
+    <% } %>
+  </div>
+  <% } else { %>
+  <form method="get" action="/publisher/reports.xlsx" class="stack-form top-gap report-download-form">
+    <fieldset class="report-download-panel">
+      <legend>Download Reports</legend>
+      <div class="report-type-options">
+        <label class="report-checkbox-option"><input type="checkbox" name="reportTypes" value="registrations" checked /> <span>Registration Report</span></label>
+        <label class="report-checkbox-option"><input type="checkbox" name="reportTypes" value="organizations" checked /> <span>Organization Registrant Report</span></label>
+        <label class="report-checkbox-option select-all-events"><input type="checkbox" id="selectAllReportEvents" /> <span>Select all visible events</span></label>
+      </div>
+      <p class="muted">Select one or more events below. Choosing both report types downloads them together in one Excel workbook.</p>
+    </fieldset>
+  <div class="compact-table-wrap" role="region" aria-label="Publisher event list">
+    <table class="compact-table">
+      <thead>
+        <tr>
+          <th scope="col">Include</th>
+          <th>Title</th>
+          <th>Date &amp; Schedule</th>
+          <th>Status</th>
+          <th>Registrants</th>
+          <th>Attended</th>
+          <th>Speakers</th>
+          <th>Proctors</th>
+          <th>Feedback</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% events.forEach((event) => { %>
+        <tr>
+          <td class="event-report-select-cell">
+            <label class="event-report-selector">
+              <input type="checkbox" name="selectedEventIds" value="<%= event.id %>" aria-label="Include <%= event.title %>" />
+              <span>Select</span>
+            </label>
+          </td>
+          <td class="text-wrap event-title-cell">
+            <div><%= event.title %></div>
+            <%- include("partials/event-partner", { event, compact: true }) %>
+            <div class="event-title-badges">
+              <% if (event.unlisted) { %><span class="pill unlisted">Unlisted</span><% } %>
+              <% if (event.partnerId) { %><span class="pill <%= event.publicationStatus || 'approved' %>">Publication: <%= event.publicationStatus || "approved" %></span><% } %>
+              <% if (event.isShared) { %><span class="pill shared-access">Shared (<%= event.accessLevel %>)</span><% } %>
+            </div>
+          </td>
+          <td class="text-wrap"><%= new Date(event.startAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) %><br /><%= formatDualTimezone(event.startAt, event.timeZone) %> - <%= formatDualTimezone(event.endAt, event.timeZone) %></td>
+          <td><span class="pill status <%= event.computedStatus %>"><%= event.computedStatus %></span></td>
+          <td><%= event.registrationCount %></td>
+          <td><%= event.attendedCount %></td>
+          <td><%= event.speakerCount %></td>
+          <td><%= event.proctorCount %></td>
+          <td><%= event.feedbackCount %></td>
+          <td>
+            <div class="inline-actions publisher-event-actions">
+              <a href="/publisher/events/<%= event.id %>">Open Event</a>
+              <% if (!event.isShared) { %>
+              <% if (partnerAgreement?.required) { %>
+              <a href="/partners/agreement">Sign agreement to duplicate</a>
+              <% } else { %>
+              <a href="/publisher/events/new?duplicateFrom=<%= encodeURIComponent(event.id) %>">Duplicate</a>
+              <% } %>
+              <% } %>
+            </div>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+    <div class="inline-actions top-gap">
+      <button type="submit">Download Selected Reports</button>
+    </div>
+  </form>
+  <% } %>
+</section>
+
+<script>
+  const selectAllReportEvents = document.getElementById("selectAllReportEvents");
+  const reportEventCheckboxes = Array.from(document.querySelectorAll('input[name="selectedEventIds"]'));
+  if (selectAllReportEvents) {
+    selectAllReportEvents.addEventListener("change", () => {
+      reportEventCheckboxes.forEach((checkbox) => {
+        checkbox.checked = selectAllReportEvents.checked;
+      });
+    });
+    reportEventCheckboxes.forEach((checkbox) => {
+      checkbox.addEventListener("change", () => {
+        selectAllReportEvents.checked = reportEventCheckboxes.every((item) => item.checked);
+        selectAllReportEvents.indeterminate = !selectAllReportEvents.checked
+          && reportEventCheckboxes.some((item) => item.checked);
+      });
+    });
+  }
+</script>
+
+<%- include("partials/footer") %>

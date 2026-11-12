@@ -1,0 +1,11 @@
+<% const responseSessionRatings = Array.isArray(feedback.sessionRatings) ? feedback.sessionRatings : feedback.sessionId ? [{ sessionTitle: feedback.sessionTitle, rating: feedback.rating }] : []; %>
+<% if (responseSessionRatings.length) { %>
+<table class="compact-table" aria-label="Session ratings">
+  <thead><tr><th scope="col">Session</th><th scope="col">Rating</th></tr></thead>
+  <tbody>
+    <% responseSessionRatings.forEach((item) => { %>
+    <tr><td class="text-wrap"><%= item.sessionTitle || "Session" %></td><td><%= item.rating %> / 5</td></tr>
+    <% }) %>
+  </tbody>
+</table>
+<% } %>

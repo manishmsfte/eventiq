@@ -1,0 +1,108 @@
+<%- include("partials/header", { title: event.title, publisher, supervisor, registrant, facilitator, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "My Facilitator Events", href: "/facilitator/dashboard" }, { label: event.title }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow"><%= persona === "speaker" ? "Speaker" : persona === "proctor" ? "Proctor" : "Facilitator" %> Event Workspace</p>
+  <h1><%= event.title %></h1>
+  <p><span class="pill status <%= event.computedStatus %>"><%= event.computedStatus %></span> <%= new Date(event.startAt).toLocaleString() %> - <%= new Date(event.endAt).toLocaleString() %></p>
+</section>
+
+<% if (message) { %><p class="status"><%= message %></p><% } %>
+
+<section class="panel status" aria-labelledby="team-thank-you">
+  <h2 id="team-thank-you">Thank you for supporting this event</h2>
+  <p>On behalf of the event publisher, thank you for contributing as a <%= persona === "speaker" ? "speaker" : persona === "proctor" ? "proctor" : "facilitator" %>.</p>
+  <p>Use <a href="#event-team">Event Team</a> to review your sessions and update your availability.</p>
+  <% if (facilitator?.switchedFromPublisher) { %>
+  <form method="post" action="/publisher/restore-persona">
+    <button type="submit">Return to Publisher Workspace</button>
+  </form>
+  <% } %>
+</section>
+
+<section class="kpi-grid">
+  <article class="mini-card"><h3>Registered</h3><p class="kpi-number"><%= reportSummary.registered %></p></article>
+  <article class="mini-card"><h3>Attended</h3><p class="kpi-number"><%= reportSummary.attended %></p></article>
+  <article class="mini-card"><h3>Assigned Sessions</h3><p class="kpi-number"><%= sessions.length %></p></article>
+</section>
+
+<section class="panel">
+  <h2>Registrant Operations</h2>
+  <div class="quick-actions-grid">
+    <a href="/publisher/events/<%= event.id %>/reports/registrations">Manage Registrations</a>
+    <a href="/publisher/events/<%= event.id %>/reports/registrations.xlsx">Download Registration Report</a>
+    <a href="/publisher/events/<%= event.id %>/registrations/mail-merge.csv">Download Email List</a>
+    <a href="/publisher/events/<%= event.id %>/reports/organizations">Organization Report</a>
+  </div>
+</section>
+
+<section class="panel" id="event-team">
+  <% const currentMember = typeof member !== "undefined" ? member : null; %>
+  <h2>Event Team: My Assigned Sessions and Availability</h2>
+  <form method="post" action="/facilitator/events/<%= event.id %>/availability" class="form-grid two">
+    <label>Available From<input type="datetime-local" name="availableFrom" value="<%= new Date(currentMember?.availableFrom || event.startAt).toISOString().slice(0, 16) %>" required /></label>
+    <label>Available To<input type="datetime-local" name="availableTo" value="<%= new Date(currentMember?.availableTo || event.endAt).toISOString().slice(0, 16) %>" required /></label>
+    <div><button type="submit">Update My Availability</button></div>
+  </form>
+  <% if (!sessions.length) { %>
+  <p>No individual sessions have been assigned yet.</p>
+  <% } else { %>
+  <div class="compact-table-wrap">
+    <table class="compact-table">
+      <thead><tr><th>Session</th><th>When</th><th>Role</th><th>Session Content</th><th>TSG</th></tr></thead>
+      <tbody>
+        <% sessions.forEach((item) => { %>
+        <tr>
+          <td><strong><%= item.sequence %>. <%= item.title %></strong></td>
+          <td><%= new Date(item.startAt).toLocaleString() %> - <%= new Date(item.endAt).toLocaleTimeString() %></td>
+          <td><%= item.roles.join(" & ") %></td>
+          <td class="text-wrap"><%= item.description || "No session content provided." %></td>
+          <td>
+            <% if (item.tsgFileName) { %>
+            <a href="/events/<%= event.id %>/sessions/<%= item.id %>/tsg">Download <%= item.tsgFileName %></a>
+            <button type="button" class="copy-tsg-link" data-tsg-link="<%= publicBaseUrl %>/events/<%= event.id %>/sessions/<%= item.id %>/tsg">Copy TSG Link</button>
+            <% } else { %>
+            Not uploaded
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</section>
+
+<% const labAssignment = (typeof assignments !== "undefined" ? assignments : []).find((item) => item.labWebUri || item.labVmUsername || item.labResourceGroup || item.labPortalUsername || item.labDatabaseAccountName || item.labFoundryAccountName); %>
+<section class="panel">
+  <h2>My Lab Access</h2>
+  <% if (!labAssignment) { %>
+  <p class="muted">No lab has been deployed to you for this event yet.</p>
+  <% } else { %>
+  <% if (labAssignment.labWebUri) { %><p><strong>Web URI:</strong> <a href="<%= labAssignment.labWebUri %>" target="_blank" rel="noreferrer"><%= labAssignment.labWebUri %></a></p><% } %>
+  <% if (labAssignment.labVmUsername) { %><p><strong>VM username:</strong> <%= labAssignment.labVmUsername %></p><% } %>
+  <% if (labAssignment.labVmPassword) { %><p><strong>VM password:</strong> <%= labAssignment.labVmPassword %></p><% } %>
+  <% if (labAssignment.labPortalUsername) { %><p><strong>Portal username:</strong> <%= labAssignment.labPortalUsername %></p><% } %>
+  <% if (labAssignment.labPortalPassword) { %><p><strong>Portal password:</strong> <%= labAssignment.labPortalPassword %></p><% } %>
+  <% if (labAssignment.labResourceGroup) { %><p><strong>Resource group:</strong> <%= labAssignment.labResourceGroup %></p><% } %>
+  <% if (labAssignment.labDatabaseAccountName) { %>
+  <p><strong>Database account:</strong> <%= labAssignment.labDatabaseAccountName %></p>
+  <% if (labAssignment.labDatabaseAccountType === "documentdb" && labAssignment.labVmUsername) { %><p><strong>DocumentDB username:</strong> <%= String(labAssignment.labVmUsername).replace(/_/g, "") %></p><% } %>
+  <% if (labAssignment.labDatabaseAccountType === "documentdb" && labAssignment.labVmPassword) { %><p><strong>DocumentDB password:</strong> <%= labAssignment.labVmPassword %></p><% } %>
+  <% } %>
+  <% if (labAssignment.labFoundryAccountName) { %><p><strong>Azure AI Foundry account:</strong> <%= labAssignment.labFoundryAccountName %></p><% } %>
+  <% if (labAssignment.labAccessUpdatedAt) { %><p><strong>Deployed:</strong> <%= new Date(labAssignment.labAccessUpdatedAt).toLocaleString() %></p><% } %>
+  <% } %>
+</section>
+
+<script>
+  document.querySelectorAll(".copy-tsg-link").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!await EventIQ.copyText(button.dataset.tsgLink, "Session content link copied.")) return;
+      button.textContent = "Copied";
+      window.setTimeout(() => { button.textContent = "Copy TSG Link"; }, 1400);
+    });
+  });
+</script>
+
+<%- include("partials/footer") %>

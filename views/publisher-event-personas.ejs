@@ -1,0 +1,204 @@
+<%- include("partials/header", { title: "Speakers & Proctors", publisher, supervisor, registrant, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Publisher", href: "/publisher" }, { label: event.title, href: `/publisher/events/${event.id}` }, { label: "Speakers & Proctors" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Event Personas</p>
+  <h1><%= event.title %></h1>
+  <p>Assign speakers and proctors at the event level, and reuse people from the available free list.</p>
+</section>
+
+<% if (message) { %>
+<p class="status"><%= message %></p>
+<% } %>
+
+<section class="split split-wide">
+  <div class="panel">
+    <h2>Assigned to This Event</h2>
+    <div class="kpi-grid">
+      <article class="mini-card" id="speakers"><h3>Speakers</h3><p class="kpi-number"><%= assignedSpeakers.length %></p></article>
+      <article class="mini-card" id="proctors"><h3>Proctors</h3><p class="kpi-number"><%= assignedProctors.length %></p></article>
+    </div>
+
+    <h3>Speakers</h3>
+    <% if (!assignedSpeakers.length) { %>
+    <p>No speakers assigned.</p>
+    <% } else { %>
+    <div class="compact-table-wrap">
+      <table class="compact-table">
+        <thead><tr><th>Email</th><th>Available From</th><th>Available To</th></tr></thead>
+        <tbody>
+          <% assignedSpeakers.forEach((item) => { %>
+          <tr><td><%= item.inviteEmail %></td><td><%= new Date(item.availableFrom).toLocaleString() %></td><td><%= new Date(item.availableTo).toLocaleString() %></td></tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+
+    <h3>Proctors</h3>
+    <% if (!assignedProctors.length) { %>
+    <p>No proctors assigned.</p>
+    <% } else { %>
+    <div class="compact-table-wrap">
+      <table class="compact-table">
+        <thead><tr><th>Email</th><th>Available From</th><th>Available To</th></tr></thead>
+        <tbody>
+          <% assignedProctors.forEach((item) => { %>
+          <tr><td><%= item.inviteEmail %></td><td><%= new Date(item.availableFrom).toLocaleString() %></td><td><%= new Date(item.availableTo).toLocaleString() %></td></tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+
+  <div class="panel">
+    <h2>Invite Speaker or Proctor</h2>
+    <% if (accessLevel === "owner" || accessLevel === "write") { %>
+    <form method="post" action="/publisher/events/<%= event.id %>/personas" class="stack-form" id="personaInviteForm">
+      <label>
+        Persona Type
+        <select name="personaType" id="personaType" required>
+          <option value="speaker">Speaker</option>
+          <option value="proctor">Proctor</option>
+        </select>
+      </label>
+      <label>
+        Email (type or reuse from known list)
+        <select id="availablePersonaPicker">
+          <option value="">Select known person...</option>
+          <% [...availableSpeakers, ...availableProctors].forEach((item) => { %>
+          <option value="<%= item.inviteEmail %>"><%= item.inviteEmail %><%= item.personaType ? ` (${item.personaType})` : "" %></option>
+          <% }) %>
+        </select>
+        <input type="email" name="inviteEmail" id="inviteEmail" list="availablePersonaEmails" required />
+        <datalist id="availablePersonaEmails">
+          <% [...new Set([...availableSpeakers, ...availableProctors].map((item) => item.inviteEmail))].forEach((email) => { %>
+          <option value="<%= email %>"></option>
+          <% }) %>
+        </datalist>
+      </label>
+      <label>
+        Name
+        <input type="text" name="personaName" placeholder="Full name" <%= publisher?.partnerId ? "required" : "" %> />
+      </label>
+      <label id="personaPasswordField">
+        Login Password (required for new persona email)
+        <input type="password" name="personaPassword" id="personaPassword" placeholder="Reuse existing account if left blank" minlength="10" />
+      </label>
+      <p id="personaPasswordHint" class="muted">Enter a password only when creating a new speaker/proctor login.</p>
+      <label>
+        Available From
+        <input type="datetime-local" name="availableFrom" id="availableFrom" value="<%= new Date(event.startAt).toISOString().slice(0, 16) %>" required />
+      </label>
+      <label>
+        Available To
+        <input type="datetime-local" name="availableTo" id="availableTo" value="<%= new Date(event.endAt).toISOString().slice(0, 16) %>" required />
+      </label>
+      <p class="muted">Times shown in the event's time zone: <strong><%= event.timeZone || "UTC" %></strong>.</p>
+      <button type="submit">Invite Persona</button>
+    </form>
+    <% } else { %>
+    <p class="muted">View-only access. Ask the event owner for write access to invite speakers or proctors.</p>
+    <% } %>
+
+    <h3>Available Speakers</h3>
+    <p class="muted">Includes known proctors and publishers, who can also be invited as speakers.</p>
+    <% if (!availableSpeakers.length) { %>
+    <p>No free speakers in the known pool.</p>
+    <% } else { %>
+    <div class="scroll-list short">
+      <% availableSpeakers.forEach((item) => { %>
+      <article class="mini-card">
+        <h3><%= item.inviteEmail %> <% if (item.personaType === "proctor") { %><span class="pill read">proctor</span><% } else if (item.personaType === "publisher") { %><span class="pill write">publisher</span><% } %></h3>
+        <% if (item.availableFrom && item.availableTo) { %>
+        <p><strong>Last Known Window:</strong> <%= new Date(item.availableFrom).toLocaleString() %> - <%= new Date(item.availableTo).toLocaleString() %></p>
+        <% } else { %>
+        <p><strong>Last Known Window:</strong> N/A</p>
+        <% } %>
+      </article>
+      <% }) %>
+    </div>
+    <% } %>
+
+    <h3>Available Proctors</h3>
+    <% if (!availableProctors.length) { %>
+    <p>No free proctors in the known pool.</p>
+    <% } else { %>
+    <div class="scroll-list short">
+      <% availableProctors.forEach((item) => { %>
+      <article class="mini-card">
+        <h3><%= item.inviteEmail %></h3>
+        <p><strong>Last Known Window:</strong> <%= new Date(item.availableFrom).toLocaleString() %> - <%= new Date(item.availableTo).toLocaleString() %></p>
+      </article>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+</section>
+
+<script>
+  const existingSpeakerLogins = new Set(<%- JSON.stringify((existingSpeakerLogins || []).map((value) => String(value).toLowerCase())) %>);
+  const existingProctorLogins = new Set(<%- JSON.stringify((existingProctorLogins || []).map((value) => String(value).toLowerCase())) %>);
+
+  const personaInviteForm = document.getElementById('personaInviteForm');
+  const personaTypeInput = document.getElementById('personaType');
+  const availablePersonaPicker = document.getElementById('availablePersonaPicker');
+  const inviteEmailInput = document.getElementById('inviteEmail');
+  const personaPasswordField = document.getElementById('personaPasswordField');
+  const personaPasswordInput = document.getElementById('personaPassword');
+  const personaPasswordHint = document.getElementById('personaPasswordHint');
+
+  function getLoginSet(personaType) {
+    return personaType === 'proctor' ? existingProctorLogins : existingSpeakerLogins;
+  }
+
+  function syncPersonaPasswordHint() {
+    const personaType = String(personaTypeInput.value || '').toLowerCase();
+    const inviteEmail = String(inviteEmailInput.value || '').trim().toLowerCase();
+    const hasExistingLogin = inviteEmail ? getLoginSet(personaType).has(inviteEmail) : false;
+
+    if (hasExistingLogin) {
+      personaPasswordInput.required = false;
+      personaPasswordInput.value = '';
+      personaPasswordField.style.display = 'none';
+      personaPasswordHint.textContent = 'This person is already registered. No password needed.';
+      personaPasswordHint.classList.remove('error');
+      return;
+    }
+
+    personaPasswordField.style.display = '';
+    personaPasswordInput.required = inviteEmail.length > 0;
+    personaPasswordHint.textContent =
+      inviteEmail.length > 0
+        ? 'New login will be created. Password is required and must be at least 8 characters.'
+        : 'Enter an email to check if password is required.';
+    personaPasswordHint.classList.remove('error');
+  }
+
+  personaTypeInput.addEventListener('change', syncPersonaPasswordHint);
+  availablePersonaPicker.addEventListener('change', () => {
+    if (availablePersonaPicker.value) {
+      inviteEmailInput.value = availablePersonaPicker.value;
+      syncPersonaPasswordHint();
+    }
+  });
+  inviteEmailInput.addEventListener('input', syncPersonaPasswordHint);
+  syncPersonaPasswordHint();
+
+  personaInviteForm.addEventListener('submit', (event) => {
+    const personaType = String(personaTypeInput.value || '').toLowerCase();
+    const inviteEmail = String(inviteEmailInput.value || '').trim().toLowerCase();
+    const password = String(personaPasswordInput.value || '');
+    const hasExistingLogin = inviteEmail ? getLoginSet(personaType).has(inviteEmail) : false;
+
+    if (!hasExistingLogin && inviteEmail && password.length < 8) {
+      event.preventDefault();
+      personaPasswordHint.textContent = 'Password is required for new facilitator logins and must be at least 8 characters.';
+      personaPasswordHint.classList.add('error');
+      personaPasswordInput.focus();
+    }
+  });
+</script>
+
+<%- include("partials/footer") %>

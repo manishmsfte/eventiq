@@ -1,0 +1,96 @@
+<%- include("partials/header", { title: "Supervisor Event Drill-Down", publisher, supervisor, registrant }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Supervisor", href: "/supervisor" }, { label: event.title }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Supervisor Event Drill-Down</p>
+  <h1><%= event.title %></h1>
+  <p>
+    Publisher: <strong><%= event.publisherEmail %></strong> | Status:
+    <span class="pill status <%= event.computedStatus %>"><%= event.computedStatus %></span>
+  </p>
+</section>
+<% if (piiRestricted) { %>
+<p class="error">PII masking is active. Unmasked attendee data is restricted to authorized identity only.</p>
+<% } %>
+
+<section class="split">
+  <div class="panel">
+    <h2>Registrations</h2>
+    <% if (!registrations.length) { %>
+    <p>No registrations for this event.</p>
+    <% } else { %>
+    <div class="compact-table-wrap">
+      <table class="compact-table">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Email</th>
+            <th>Organization</th>
+            <th>Code</th>
+            <th>Status</th>
+            <th>Attended</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% registrations.forEach((item) => { %>
+          <tr>
+            <td class="text-wrap"><%= item.attendeeName %></td>
+            <td><%= item.attendeeEmail %></td>
+            <td class="text-wrap"><%= item.organization || "N/A" %></td>
+            <td><%= item.registrationCode || "N/A" %></td>
+            <td><%= item.status || "registered" %></td>
+            <td><%= item.attended ? "Yes" : "No" %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+  </div>
+
+  <div class="panel">
+    <h2>Organization Summary</h2>
+    <% if (!organizations.length) { %>
+    <p>No organization report data yet.</p>
+    <% } else { %>
+    <div class="compact-table-wrap">
+      <table class="compact-table">
+        <thead>
+          <tr>
+            <th>Organization</th>
+            <th>Registered</th>
+            <th>Attended</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% organizations.forEach((row) => { %>
+          <tr>
+            <td class="text-wrap"><%= row.organization %></td>
+            <td><%= row.registered %></td>
+            <td><%= row.attended %></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <% } %>
+
+    <h2>Feedback</h2>
+    <% if (!feedback.length) { %>
+    <p>No feedback submitted yet.</p>
+    <% } else { %>
+    <div class="scroll-list short">
+      <% feedback.forEach((item) => { %>
+      <article class="mini-card">
+        <p><strong>Rating:</strong> <%= item.rating %> / 5</p>
+        <p><strong>Recommend:</strong> <%= item.recommendation %></p>
+        <p><strong>Comments:</strong> <%= item.comments %></p>
+        <%- include("partials/feedback-session-ratings", { feedback: item }) %>
+      </article>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+</section>
+
+<%- include("partials/footer") %>

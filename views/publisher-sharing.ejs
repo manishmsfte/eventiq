@@ -1,0 +1,112 @@
+<%- include("partials/header", { title: "Shared Access", publisher, supervisor, registrant, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Publisher", href: "/publisher" }, { label: "Shared Access" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Sharing Hub</p>
+  <h1>Shared Access</h1>
+  <p>Grant read or write access to one or more of your events in a single action, and review everyone who currently has shared access across your events.</p>
+</section>
+
+<% if (message) { %><p class="status"><%= message %></p><% } %>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+
+<section class="panel">
+  <h2>Share Multiple Events</h2>
+  <% if (!ownedEvents.length) { %>
+  <p class="muted">You do not own any events yet.</p>
+  <% } else { %>
+  <form method="post" action="/publisher/sharing" class="publisher-manage-form publisher-form-full">
+    <label class="publisher-form-wide">
+      <span class="field-label">Publisher Email <span class="required">*</span></span>
+      <input type="email" name="collaboratorEmail" placeholder="name@microsoft.com" required />
+    </label>
+    <label>
+      Access Level
+      <select name="accessLevel">
+        <option value="read">Read only</option>
+        <option value="write">Write access</option>
+      </select>
+    </label>
+    <div class="publisher-form-wide">
+      <span class="field-label">Select Events <span class="required">*</span></span>
+      <div class="event-picker-grid">
+        <% ownedEvents.forEach((item) => { %>
+        <label class="event-picker-item">
+          <input type="checkbox" name="eventIds" value="<%= item.id %>" />
+          <span class="event-picker-details">
+            <strong><%= item.title %></strong>
+            <%- include("partials/event-partner", { event: item, compact: true }) %>
+            <small class="muted">
+              <%= new Date(item.startAt).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) %>
+              &middot; <%= formatDualTimezone(item.startAt, item.timeZone) %>
+            </small>
+          </span>
+        </label>
+        <% }) %>
+      </div>
+    </div>
+    <div class="publisher-form-actions publisher-form-wide">
+      <button type="submit">Share Access</button>
+    </div>
+  </form>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>Who Has Shared Access</h2>
+  <% if (!sharedEvents.length) { %>
+  <p class="muted">None of your events are shared with anyone yet.</p>
+  <% } else { %>
+  <div class="sharing-search-bar">
+    <input type="search" id="sharingSearchInput" placeholder="Search by event name or collaborator email..." />
+  </div>
+  <div class="compact-table-wrap accounts-table-wrap">
+    <table class="compact-table" id="sharingAccessTable">
+      <thead>
+        <tr><th>Event</th><th>Collaborator Email</th><th>Access</th><th>Action</th></tr>
+      </thead>
+      <tbody>
+        <% sharedEvents.forEach((group) => { %>
+        <% group.collaborators.forEach((item) => { %>
+        <tr data-search="<%= String(group.event.title).toLowerCase() %> <%= String(group.event.partnerName || "").toLowerCase() %> <%= item.collaboratorEmail.toLowerCase() %>">
+          <td><a href="/publisher/events/<%= group.event.id %>"><%= group.event.title %></a><%- include("partials/event-partner", { event: group.event, compact: true }) %></td>
+          <td><%= item.collaboratorEmail %></td>
+          <td><span class="pill <%= item.accessLevel %>"><%= item.accessLevel %></span></td>
+          <td>
+            <form method="post" action="/publisher/sharing/<%= group.event.id %>/<%= encodeURIComponent(item.collaboratorEmail) %>/remove">
+              <button type="submit" class="danger">Remove</button>
+            </form>
+          </td>
+        </tr>
+        <% }) %>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted" id="sharingNoResults" style="display: none;">No matches found.</p>
+  <% } %>
+</section>
+
+<script>
+  (function () {
+    const input = document.getElementById("sharingSearchInput");
+    if (!input) return;
+    const rows = Array.from(document.querySelectorAll("#sharingAccessTable tbody tr"));
+    const noResults = document.getElementById("sharingNoResults");
+
+    input.addEventListener("input", () => {
+      const term = input.value.trim().toLowerCase();
+      let visibleCount = 0;
+      rows.forEach((row) => {
+        const match = !term || row.dataset.search.includes(term);
+        row.style.display = match ? "" : "none";
+        if (match) visibleCount += 1;
+      });
+      if (noResults) {
+        noResults.style.display = visibleCount === 0 ? "" : "none";
+      }
+    });
+  })();
+</script>
+
+<%- include("partials/footer") %>

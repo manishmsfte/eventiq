@@ -1,0 +1,27 @@
+<%- include("partials/header", { title: "Supervisor Login", publisher, supervisor, registrant }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Supervisor Login" }] }) %>
+
+<section class="auth-wrap">
+  <h1>Supervisor Login</h1>
+  <p>Supervisor can view all events and publisher-wise metrics.</p>
+
+  <% if (error) { %>
+  <p class="error"><%= error %></p>
+  <% } %>
+
+  <form method="post" action="/supervisor/login" class="stack-form">
+    <label>
+      Supervisor Email
+      <input type="email" name="email" required />
+    </label>
+
+    <label>
+      Supervisor Password
+      <input type="password" name="password" required />
+    </label>
+
+    <button type="submit">Enter Supervisor Console</button>
+  </form>
+</section>
+
+<%- include("partials/footer") %>

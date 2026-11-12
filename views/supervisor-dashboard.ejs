@@ -1,0 +1,414 @@
+<%- include("partials/header", { title: "Supervisor Console", publisher, supervisor, registrant }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Supervisor" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Supervisor Workspace</p>
+  <h1>Publisher Governance and Event Drill-Down</h1>
+  <a class="context-help-link" href="/help#supervisors">Supervisor help</a>
+  <p>Create publisher accounts, monitor event lifecycle status, and inspect event-level details.</p>
+</section>
+
+<% if (message) { %>
+<p class="status"><%= message %></p>
+<% } %>
+
+<nav class="workspace-tabs" aria-label="Supervisor workspace views">
+  <a href="#overview" data-workspace-tab="overview">Overview</a>
+  <a href="#events" data-workspace-tab="events">Events</a>
+  <a href="#partners" data-workspace-tab="partners">Partner Applications</a>
+  <a href="#users" data-workspace-tab="users">Users</a>
+  <a href="#labs" data-workspace-tab="labs">Lab Deployments</a>
+  <a href="#audit" data-workspace-tab="audit">Audit</a>
+  <a href="#customers" data-workspace-tab="customers">Customers</a>
+  <a href="#help" data-workspace-tab="help">Help</a>
+</nav>
+
+<section class="split workspace-view" data-workspace-view="overview">
+  <div class="panel">
+    <h2>Create Account</h2>
+    <form method="post" action="/supervisor/publishers" class="stack-form">
+      <label>
+        Account Type
+        <select name="userType" required>
+          <option value="publisher">Publisher</option>
+          <option value="speaker">Speaker</option>
+          <option value="proctor">Proctor</option>
+        </select>
+      </label>
+
+      <label>
+        Name
+        <input type="text" name="name" required placeholder="Full name" />
+      </label>
+
+      <label>
+        Email
+        <input type="email" name="email" required placeholder="name@microsoft.com" />
+      </label>
+
+      <label>
+        Temporary Password
+        <input type="password" name="password" minlength="10" required />
+      </label>
+
+      <button type="submit">Create Account</button>
+    </form>
+  </div>
+
+  <div class="panel">
+    <h2>Filters</h2>
+    <form method="get" action="/supervisor" class="filters">
+      <label>
+        Time Zone
+        <select name="timeZone">
+          <option value="">All</option>
+          <% timeZones.forEach((tz) => { %>
+          <option value="<%= tz %>" <%= filters.timeZone === tz ? "selected" : "" %>><%= tz %></option>
+          <% }) %>
+        </select>
+      </label>
+
+      <button type="submit">Apply Filter</button>
+    </form>
+
+    <h2>Publisher Summary</h2>
+    <% if (!publisherSummaries.length) { %>
+    <p>No data available for selected filters.</p>
+    <% } %>
+
+    <div class="scroll-list short">
+      <% publisherSummaries.forEach((item) => { %>
+      <article class="mini-card">
+        <h3><%= item.publisherEmail %></h3>
+        <p><strong>Events:</strong> <%= item.eventCount %></p>
+        <p><strong>Registered:</strong> <%= item.registrationCount %></p>
+        <p><strong>Attended:</strong> <%= item.attendedCount %></p>
+      </article>
+      <% }) %>
+    </div>
+
+    <h2>Send Test Notification</h2>
+    <form method="post" action="/supervisor/notifications/test" class="stack-form">
+      <label>
+        To Email
+        <input type="email" name="to" required placeholder="user@contoso.com" />
+      </label>
+      <label>
+        Subject
+        <input type="text" name="subject" value="Lab Automation test notification" />
+      </label>
+      <label>
+        Message
+        <textarea name="text" rows="3" placeholder="Optional custom message"></textarea>
+      </label>
+      <button type="submit">Send Test</button>
+    </form>
+  </div>
+</section>
+
+<section class="panel workspace-view" data-workspace-view="audit" aria-labelledby="audit-log-heading">
+  <div class="publisher-section-heading">
+    <div><h2 id="audit-log-heading">Application Audit</h2><p>Recent authenticated activity and all state-changing requests.</p></div>
+    <a class="button-link" href="/supervisor/audit.csv">Download CSV</a>
+  </div>
+  <% if (!auditEntries.length) { %>
+  <p>No audit activity has been recorded yet.</p>
+  <% } else { %>
+  <div class="compact-table-wrap" role="region" aria-label="Application audit entries">
+    <table class="compact-table">
+      <thead><tr><th>Timestamp</th><th>Actor</th><th>Role</th><th>Action</th><th>Path</th><th>Status</th><th>Event</th></tr></thead>
+      <tbody>
+        <% auditEntries.forEach((entry) => { %>
+        <tr>
+          <td><time datetime="<%= entry.timestamp %>"><%= new Date(entry.timestamp).toLocaleString() %></time></td>
+          <td class="text-wrap"><%= entry.actorEmail || entry.actorName || "Automation" %></td>
+          <td><span class="pill read"><%= entry.actorRole || "anonymous" %></span></td>
+          <td><%= entry.method %></td>
+          <td class="text-wrap"><code><%= entry.path %></code></td>
+          <td><%= entry.statusCode %></td>
+          <td class="text-wrap"><%= entry.eventId || "-" %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</section>
+
+<section class="panel workspace-view" data-workspace-view="customers" aria-labelledby="customer-intelligence-heading">
+  <h2 id="customer-intelligence-heading">Customer Intelligence</h2>
+  <p class="muted">Organization values are normalized for reporting only; existing registration records are not changed.</p>
+  <% if (!events.length) { %>
+  <p>No sessions are available to include in a customer report.</p>
+  <% } else { %>
+  <form method="get" action="/supervisor" id="customerSelectionForm" class="stack-form">
+    <input type="hidden" name="timeZone" value="<%= filters.timeZone %>" />
+    <fieldset>
+      <legend>Select sessions</legend>
+      <div class="compact-table-wrap" role="region" aria-label="Sessions available for customer intelligence">
+        <table class="compact-table">
+          <thead><tr><th scope="col">Include</th><th scope="col">Session</th><th scope="col">Date</th><th scope="col">Publisher</th><th scope="col">Registrations</th></tr></thead>
+          <tbody>
+            <% events.forEach((event) => { %>
+            <tr>
+              <td><input type="checkbox" name="selectedEventIds" value="<%= event.id %>" aria-label="Include <%= event.title %>" <%= selectedEventIds.includes(String(event.id)) ? "checked" : "" %> /></td>
+              <td class="text-wrap"><%= event.title %><%- include("partials/event-partner", { event, compact: true }) %></td>
+              <td class="text-wrap"><%= formatDualTimezone(event.startAt, event.timeZone) %></td>
+              <td><%= event.publisherEmail %></td>
+              <td><%= event.registrationCount %></td>
+            </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </fieldset>
+    <div class="inline-actions">
+      <button type="submit">Refresh Customer Report</button>
+      <button type="submit" formaction="/supervisor/customers.xlsx">Download Consolidated Excel</button>
+    </div>
+  </form>
+
+  <form method="post" action="/supervisor/customers/import" enctype="multipart/form-data" id="customerImportForm" class="stack-form top-gap">
+    <input type="hidden" name="selectedEventIds" value="" />
+    <label>
+      Customer enrichment workbook (.xlsx, .xls, or .csv)
+      <input type="file" name="customerFile" accept=".xlsx,.xls,.csv" required />
+    </label>
+    <p class="muted">Expected columns: Organization, Segment, Region, Total ACR USD (Last 6 Months), Cosmos DB ACR USD (Last 6 Months), Cosmos DB ACR USD (Last Month), Cosmos DB ACR Growth %. Downloaded Excel includes these columns.</p>
+    <button type="submit">Import Customer Enrichment</button>
+  </form>
+
+  <div class="kpi-grid top-gap">
+    <article class="mini-card"><h3>Total Customers</h3><p class="kpi-number"><%= customerReport.summary.totalCustomers %></p></article>
+    <article class="mini-card"><h3>Total Registrations</h3><p class="kpi-number"><%= customerReport.summary.totalRegistrations %></p></article>
+    <article class="mini-card"><h3>Cosmos ACR, 6 Months</h3><p class="kpi-number">$<%= customerReport.summary.totalCosmosAcrUsdLast6Months.toLocaleString(undefined, { maximumFractionDigits: 0 }) %></p><p>Average: $<%= customerReport.summary.averageCosmosAcrUsdLast6Months.toLocaleString(undefined, { maximumFractionDigits: 0 }) %></p></article>
+    <article class="mini-card"><h3>Cosmos ACR, Last Month</h3><p class="kpi-number">$<%= customerReport.summary.totalCosmosAcrUsdLastMonth.toLocaleString(undefined, { maximumFractionDigits: 0 }) %></p><p>Average growth: <%= customerReport.summary.averageCosmosAcrGrowthPercent.toLocaleString(undefined, { maximumFractionDigits: 1 }) %>%</p></article>
+  </div>
+
+  <% if (!customerReport.rows.length) { %>
+  <p>No active registration organizations exist in the selected sessions.</p>
+  <% } else { %>
+  <% const customerSegments = [...new Set(customerReport.rows.map((customer) => customer.segment).filter(Boolean))].sort(); const customerRegions = [...new Set(customerReport.rows.map((customer) => customer.region).filter(Boolean))].sort(); %>
+  <div class="filter-toolbar top-gap"><input type="search" data-table-search="customersTable" placeholder="Search organization, segment, or region" /><select data-table-select="customersTable" data-filter-key="segment"><option value="">All segments</option><% customerSegments.forEach((segment) => { %><option value="<%= segment %>"><%= segment %></option><% }) %></select><select data-table-select="customersTable" data-filter-key="region"><option value="">All regions</option><% customerRegions.forEach((region) => { %><option value="<%= region %>"><%= region %></option><% }) %></select></div>
+  <div class="compact-table-wrap top-gap" role="region" aria-label="Selected session customer report">
+    <table class="compact-table" id="customersTable">
+      <thead><tr><th scope="col">Organization</th><th scope="col">Segment</th><th scope="col">Region</th><th scope="col">Registrations</th><th scope="col">Sessions</th><th scope="col">Total ACR 6mo</th><th scope="col">Cosmos ACR 6mo</th><th scope="col">Cosmos ACR last month</th><th scope="col">Growth %</th></tr></thead>
+      <tbody>
+        <% customerReport.rows.forEach((customer) => { %>
+        <tr data-search="<%= String(customer.organization || "").toLowerCase() %> <%= String(customer.segment || "").toLowerCase() %> <%= String(customer.region || "").toLowerCase() %>" data-segment="<%= customer.segment || "" %>" data-region="<%= customer.region || "" %>"><td class="text-wrap"><%= customer.organization %></td><td><%= customer.segment || "-" %></td><td><%= customer.region || "-" %></td><td><%= customer.registrations %></td><td><%= customer.sessions %></td><td><%= customer.totalAcrUsdLast6Months === undefined ? "-" : `$${Number(customer.totalAcrUsdLast6Months).toLocaleString()}` %></td><td><%= customer.cosmosDbAcrUsdLast6Months === undefined ? "-" : `$${Number(customer.cosmosDbAcrUsdLast6Months).toLocaleString()}` %></td><td><%= customer.cosmosDbAcrUsdLastMonth === undefined ? "-" : `$${Number(customer.cosmosDbAcrUsdLastMonth).toLocaleString()}` %></td><td><%= customer.cosmosDbAcrGrowthPercent === undefined ? "-" : `${Number(customer.cosmosDbAcrGrowthPercent).toLocaleString()}%` %></td></tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted filter-empty" data-empty-for="customersTable" hidden>No matching customers.</p>
+  <% } %>
+  <% } %>
+</section>
+
+<section class="panel workspace-view" data-workspace-view="partners">
+  <h2>Partner Applications</h2>
+  <p class="muted">Edit a submitter email to update the partner contact and any linked login. The password, roles, and event access are retained; signed agreement history is unchanged.</p>
+  <% if (!partnerApplications.length) { %>
+  <p>No partner applications have been submitted.</p>
+  <% } else { %>
+  <div class="compact-table-wrap">
+    <table class="compact-table">
+      <thead><tr><th>Partner</th><th>MPN ID</th><th>Location</th><th>Submitter</th><th>Links</th><th>Status</th><th>Decision</th></tr></thead>
+      <tbody>
+        <% partnerApplications.forEach((partner) => { %>
+        <tr>
+          <td><img class="partner-table-logo" src="/partners/<%= partner.id %>/logo" alt="" /><br /><%= partner.partnerName %></td>
+          <td><%= partner.mpnId %></td>
+          <td><%= partner.partnerAddress || "Not provided" %><br /><%= partner.partnerCountry || "" %></td>
+          <td>
+            <%= partner.submitterName %><br /><%= partner.submitterEmail %>
+            <details class="row-menu">
+              <summary>Edit Submitter Email</summary>
+              <form method="post" action="/supervisor/partners/<%= partner.id %>/submitter-email" class="row-menu-panel">
+                <input type="hidden" name="expectedSubmitterEmail" value="<%= partner.submitterEmail %>" />
+                <label>
+                  Submitter Email
+                  <input type="email" name="submitterEmail" value="<%= partner.submitterEmail %>" maxlength="254" required autocomplete="off" />
+                </label>
+                <p class="muted">The user must sign in again with the new email and their current password.</p>
+                <button type="submit">Update Submitter Email</button>
+              </form>
+            </details>
+          </td>
+          <td><a href="<%= partner.websiteUrl %>" target="_blank" rel="noreferrer">Website</a><br /><a href="<%= partner.privacyPolicyUrl %>" target="_blank" rel="noreferrer">Privacy</a></td>
+          <td><span class="pill <%= partner.status %>"><%= partner.status %></span></td>
+          <td>
+            <% if (partner.status === "pending") { %>
+            <form method="post" action="/supervisor/partners/<%= partner.id %>/approve" class="stack-form compact-decision-form">
+              <input type="password" name="password" placeholder="Temporary password" minlength="10" required />
+              <button type="submit">Approve</button>
+            </form>
+            <form method="post" action="/supervisor/partners/<%= partner.id %>/reject" class="stack-form compact-decision-form">
+              <input name="reason" placeholder="Rejection reason" required />
+              <button type="submit" class="danger-button">Reject</button>
+            </form>
+            <% } else { %>
+            <small><%= partner.reviewedBy || "" %><% if (partner.rejectionReason) { %><br /><%= partner.rejectionReason %><% } %></small>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</section>
+
+<section class="panel workspace-view" data-workspace-view="users">
+  <h2>All Accounts</h2>
+  <p class="muted">Publishers, speakers, and proctors in one place. Use Actions to edit name, reset password, or change status.</p>
+  <% if (!allAccounts.length) { %>
+  <p>No account records found.</p>
+  <% } else { %>
+  <div class="filter-toolbar">
+    <input type="search" data-table-search="accountsTable" placeholder="Search by name, email, or account type..." />
+    <select data-table-select="accountsTable" data-filter-key="role"><option value="">All roles</option><option value="publisher">Publisher</option><option value="speaker">Speaker</option><option value="proctor">Proctor</option><option value="supervisor">Supervisor</option></select>
+    <select data-table-select="accountsTable" data-filter-key="active"><option value="">All statuses</option><option value="active">Active</option><option value="inactive">Inactive</option></select>
+  </div>
+  <div class="compact-table-wrap accounts-table-wrap">
+    <table class="compact-table" id="accountsTable">
+      <thead>
+        <tr><th>Name</th><th>Email</th><th>Type</th><th>Partner</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        <% allAccounts.forEach((item) => { %>
+        <tr data-search="<%= String(item.name || "").toLowerCase() %> <%= String(item.email || "").toLowerCase() %> <%= String(item.userType || "").toLowerCase() %> <%= String(item.partnerName || "").toLowerCase() %>" data-role="<%= item.userType || "" %>" data-active="<%= item.active === false ? "inactive" : "active" %>">
+          <td><%= item.name || "\u2014" %></td>
+          <td><%= item.email %></td>
+          <td><span class="pill read"><%= item.userType %></span></td>
+          <td><%= item.partnerName || "Internal" %></td>
+          <td><span class="pill <%= item.active === false ? "inactive" : "active" %>"><%= item.active === false ? "inactive" : "active" %></span></td>
+          <td>
+            <details class="row-menu">
+              <summary>Actions</summary>
+              <form method="post" action="/supervisor/accounts/<%= item.id %>/update" class="row-menu-panel">
+                <label>
+                  Name
+                  <input type="text" name="name" value="<%= item.name || "" %>" />
+                </label>
+                <label>
+                  Reset Password (optional)
+                  <input type="password" name="password" minlength="10" placeholder="Leave blank to keep current" />
+                </label>
+                <label>
+                  <input type="checkbox" name="active" value="true" <%= item.active !== false ? "checked" : "" %> />
+                  Active
+                </label>
+                <div class="inline-actions">
+                  <button type="submit">Save Changes</button>
+                </div>
+              </form>
+            </details>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted filter-empty" data-empty-for="accountsTable" hidden>No matches found.</p>
+  <% } %>
+</section>
+
+<script>
+  (function () {
+    const views = Array.from(document.querySelectorAll("[data-workspace-view]"));
+    const tabs = Array.from(document.querySelectorAll("[data-workspace-tab]"));
+    document.documentElement.classList.add("workspace-js");
+    const selectView = () => {
+      const requested = window.location.hash.slice(1);
+      const active = views.some((view) => view.dataset.workspaceView === requested) ? requested : "overview";
+      views.forEach((view) => { view.hidden = view.dataset.workspaceView !== active; });
+      tabs.forEach((tab) => {
+        const isActive = tab.dataset.workspaceTab === active;
+        tab.classList.toggle("active", isActive);
+        tab.setAttribute("aria-current", isActive ? "page" : "false");
+      });
+    };
+    window.addEventListener("hashchange", selectView);
+    selectView();
+
+    const importForm = document.getElementById("customerImportForm");
+    if (importForm) {
+      importForm.addEventListener("submit", () => {
+        importForm.querySelector("input[name='selectedEventIds']").value = Array.from(document.querySelectorAll("#customerSelectionForm input[name='selectedEventIds']:checked")).map((input) => input.value).join(",");
+      });
+    }
+
+    const filterTable = (tableId) => {
+      const table = document.getElementById(tableId);
+      if (!table) return;
+      const search = document.querySelector(`[data-table-search="${tableId}"]`)?.value.trim().toLowerCase() || "";
+      const selects = Array.from(document.querySelectorAll(`[data-table-select="${tableId}"]`));
+      let visibleCount = 0;
+      table.querySelectorAll("tbody tr").forEach((row) => {
+        const matches = (!search || row.dataset.search.includes(search)) && selects.every((select) => !select.value || row.dataset[select.dataset.filterKey] === select.value);
+        row.hidden = !matches;
+        if (matches) visibleCount += 1;
+      });
+      const empty = document.querySelector(`[data-empty-for="${tableId}"]`);
+      if (empty) empty.hidden = visibleCount > 0;
+    };
+    document.querySelectorAll("[data-table-search], [data-table-select]").forEach((control) => {
+      control.addEventListener("input", () => filterTable(control.dataset.tableSearch || control.dataset.tableSelect));
+      control.addEventListener("change", () => filterTable(control.dataset.tableSearch || control.dataset.tableSelect));
+    });
+  })();
+</script>
+
+<section class="panel workspace-view" data-workspace-view="events">
+  <h2>All Events</h2>
+  <div class="filter-toolbar"><input type="search" data-table-search="eventsTable" placeholder="Search title or publisher" /><select data-table-select="eventsTable" data-filter-key="status"><option value="">All statuses</option><option value="upcoming">Upcoming</option><option value="ongoing">Ongoing</option><option value="completed">Completed</option><option value="canceled">Canceled</option></select><select data-table-select="eventsTable" data-filter-key="zone"><option value="">All time zones</option><% timeZones.forEach((zone) => { %><option value="<%= zone %>"><%= zone %></option><% }) %></select></div>
+  <% if (!events.length) { %>
+  <p>No events available for selected filters.</p>
+  <% } %>
+
+  <% if (events.length) { %>
+  <div class="compact-table-wrap" role="region" aria-label="Supervisor events">
+    <table class="compact-table" id="eventsTable">
+      <thead>
+        <tr>
+          <th>Title</th>
+          <th>Publisher</th>
+          <th>Status</th>
+          <th>Time Zone</th>
+          <th>Window</th>
+          <th>Registrations</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% events.forEach((event) => { %>
+        <tr data-search="<%= String(event.title || "").toLowerCase() %> <%= String(event.partnerName || "").toLowerCase() %> <%= String(event.publisherEmail || "").toLowerCase() %>" data-status="<%= event.computedStatus %>" data-zone="<%= event.timeZone || "" %>">
+          <td class="text-wrap"><%= event.title %><%- include("partials/event-partner", { event, compact: true }) %></td>
+          <td><%= event.publisherEmail %></td>
+          <td><span class="pill status <%= event.computedStatus %>"><%= event.computedStatus %></span></td>
+          <td><%= event.timeZone || "-" %></td>
+          <td class="text-wrap"><%= formatDualTimezone(event.startAt, event.timeZone) %> - <%= formatDualTimezone(event.endAt, event.timeZone) %></td>
+          <td><%= event.registrationCount %></td>
+          <td><a href="/supervisor/events/<%= event.id %>">Drill Down</a></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <p class="muted filter-empty" data-empty-for="eventsTable" hidden>No matching events.</p>
+  <% } %>
+</section>
+
+<section class="panel workspace-view" data-workspace-view="labs">
+  <h2>Lab Deployments</h2>
+  <p class="muted">Event-linked batch requests and their latest import activity.</p>
+  <div class="filter-toolbar"><input type="search" data-table-search="labsTable" placeholder="Search session, location, or VM SKU" /><select data-table-select="labsTable" data-filter-key="status"><option value="">All statuses</option><% [...new Set(labProvisioningBatches.map((batch) => batch.status).filter(Boolean))].sort().forEach((status) => { %><option value="<%= status %>"><%= status %></option><% }) %></select><select data-table-select="labsTable" data-filter-key="workshop"><option value="">All workshop types</option><option value="documentdb">DocumentDB</option><option value="cosmosdb">Cosmos DB</option></select></div>
+  <% if (!labProvisioningBatches.length) { %><p>No lab deployment batches have been requested.</p><% } else { %>
+  <div class="compact-table-wrap"><table class="compact-table" id="labsTable"><thead><tr><th>Session</th><th>Workshop</th><th>Requested labs</th><th>Deployed / imported</th><th>Status</th><th>Location</th><th>VM SKU</th><th>Expiry</th><th>Errors</th></tr></thead><tbody><% labProvisioningBatches.forEach((batch) => { const workshop = batch.isDocDB ? "documentdb" : "cosmosdb"; %><tr data-search="<%= String(batch.eventTitle || batch.eventId || "").toLowerCase() %> <%= String(batch.location || "").toLowerCase() %> <%= String(batch.vmSize || "").toLowerCase() %>" data-status="<%= batch.status || "" %>" data-workshop="<%= workshop %>"><td class="text-wrap"><%= batch.eventTitle || batch.eventId || "Unknown event" %><br /><small><%= batch.requestedAt ? new Date(batch.requestedAt).toLocaleString() : "" %></small></td><td><%= batch.isDocDB ? "DocumentDB" : "Cosmos DB" %></td><td><%= batch.studentCount || 0 %></td><td><%= batch.importedCount || 0 %> / <%= batch.studentCount || 0 %></td><td><span class="pill read"><%= batch.status || "requested" %></span></td><td><%= batch.location || "-" %></td><td class="text-wrap"><%= batch.vmSize || "-" %></td><td class="text-wrap"><%= batch.expiresAt ? new Date(batch.expiresAt).toLocaleString() : "-" %></td><td class="text-wrap"><%= batch.error || "-" %></td></tr><% }) %></tbody></table></div><p class="muted filter-empty" data-empty-for="labsTable" hidden>No matching deployment batches.</p>
+  <% } %>
+</section>
+
+<section class="panel workspace-view" data-workspace-view="help"><h2>Supervisor Help</h2><p>Use Overview for account creation and test messages; Events for event drill-down; Users for account maintenance; Lab Deployments for provisioning activity; and Customers for enrichment reports.</p><a class="primary-link" href="/help#supervisors">Open Help Center</a></section>
+
+<%- include("partials/footer") %>

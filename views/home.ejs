@@ -1,0 +1,136 @@
+<%- include("partials/header", { title: "EventIQ - Complete Event Management App", publisher, supervisor, registrant, facilitator, currentUser }) %>
+
+<section class="hero">
+  <p class="eyebrow">Community Learning Track</p>
+  <h1>EventIQ - Complete Event Management App</h1>
+  <a class="context-help-link" href="/help#registrants">Help with registration</a>
+  <p>
+    Browse upcoming sessions, filter by date, location, and delivery mode, then register to receive your
+    calendar invite.
+  </p>
+</section>
+
+<section class="panel facet-shell">
+  <div class="section-head">
+    <div>
+      <h2>Find Your Session</h2>
+      <p class="muted">Use one focused view: narrow with facets, then pick from a compact result list.</p>
+    </div>
+  </div>
+
+  <form method="get" action="/" class="filters facet-row">
+    <label>
+      Search
+      <input type="text" name="search" value="<%= filters.search %>" placeholder="Title, city, description, time zone" />
+    </label>
+
+    <label>
+      Date
+      <input type="date" name="date" value="<%= filters.date %>" />
+    </label>
+
+    <label>
+      Location
+      <input type="text" name="location" placeholder="City" value="<%= filters.location %>" />
+    </label>
+
+    <label>
+      Delivery Mode
+      <select name="mode">
+        <option value="">All</option>
+        <option value="virtual" <%= filters.mode === "virtual" ? "selected" : "" %>>Virtual</option>
+        <option value="in-person" <%= filters.mode === "in-person" ? "selected" : "" %>>In-person</option>
+      </select>
+    </label>
+
+    <label>
+      Time Zone
+      <select name="timeZone">
+        <option value="">All</option>
+        <% timeZones.forEach((tz) => { %>
+        <option value="<%= tz %>" <%= filters.timeZone === tz ? "selected" : "" %>><%= tz %></option>
+        <% }) %>
+      </select>
+    </label>
+
+    <label>
+      Event Status
+      <select name="status">
+        <option value="all" <%= filters.status === "all" ? "selected" : "" %>>All Open Events</option>
+        <option value="upcoming" <%= filters.status === "upcoming" ? "selected" : "" %>>Upcoming</option>
+        <option value="ongoing" <%= filters.status === "ongoing" ? "selected" : "" %>>Ongoing</option>
+        <option value="completed" <%= filters.status === "completed" ? "selected" : "" %>>Completed</option>
+      </select>
+    </label>
+
+    <label>
+      Schedule Sort
+      <select name="sort">
+        <option value="schedule-nearest" <%= filters.sort === "schedule-nearest" ? "selected" : "" %>>Nearest to Today</option>
+        <option value="start-soonest" <%= filters.sort === "start-soonest" ? "selected" : "" %>>Start Soonest</option>
+        <option value="start-latest" <%= filters.sort === "start-latest" ? "selected" : "" %>>Start Latest</option>
+        <option value="freshness-newest" <%= filters.sort === "freshness-newest" ? "selected" : "" %>>Recently Created</option>
+        <option value="freshness-oldest" <%= filters.sort === "freshness-oldest" ? "selected" : "" %>>Earliest Created</option>
+      </select>
+    </label>
+
+    <button type="submit">Apply Filters</button>
+  </form>
+
+  <div class="facet-pills" role="group" aria-label="Event status quick filters">
+    <a class="facet-pill <%= filters.status === "all" ? "active" : "" %>" href="/?status=all&search=<%= encodeURIComponent(filters.search || "") %>&date=<%= encodeURIComponent(filters.date || "") %>&location=<%= encodeURIComponent(filters.location || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&sort=<%= encodeURIComponent(filters.sort || "schedule-nearest") %>">All <span><%= statusCounts.all %></span></a>
+    <a class="facet-pill <%= filters.status === "upcoming" ? "active" : "" %>" href="/?status=upcoming&search=<%= encodeURIComponent(filters.search || "") %>&date=<%= encodeURIComponent(filters.date || "") %>&location=<%= encodeURIComponent(filters.location || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&sort=<%= encodeURIComponent(filters.sort || "schedule-nearest") %>">Upcoming <span><%= statusCounts.upcoming %></span></a>
+    <a class="facet-pill <%= filters.status === "ongoing" ? "active" : "" %>" href="/?status=ongoing&search=<%= encodeURIComponent(filters.search || "") %>&date=<%= encodeURIComponent(filters.date || "") %>&location=<%= encodeURIComponent(filters.location || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&sort=<%= encodeURIComponent(filters.sort || "schedule-nearest") %>">Ongoing <span><%= statusCounts.ongoing %></span></a>
+    <a class="facet-pill <%= filters.status === "completed" ? "active" : "" %>" href="/?status=completed&search=<%= encodeURIComponent(filters.search || "") %>&date=<%= encodeURIComponent(filters.date || "") %>&location=<%= encodeURIComponent(filters.location || "") %>&mode=<%= encodeURIComponent(filters.mode || "") %>&timeZone=<%= encodeURIComponent(filters.timeZone || "") %>&sort=<%= encodeURIComponent(filters.sort || "schedule-nearest") %>">Completed <span><%= statusCounts.completed %></span></a>
+  </div>
+</section>
+
+<% if (status) { %>
+<p class="status"><%= status %></p>
+<% } %>
+
+<section class="panel">
+  <div class="section-head">
+    <div>
+      <h2>Results</h2>
+      <p class="muted"><%= events.length %> event<%= events.length === 1 ? "" : "s" %> matched your filters.</p>
+    </div>
+  </div>
+
+  <% if (!events.length) { %>
+  <div class="empty-card">
+    <h2>No events found</h2>
+    <p>Try changing filters or check back soon for new sessions.</p>
+  </div>
+  <% } else { %>
+  <div class="events-grid events-grid-professional" role="region" aria-label="Event listing">
+    <% events.forEach((event) => { %>
+    <article class="event-card event-card-pro">
+      <%- include("partials/event-partner", { event, compact: true }) %>
+      <div class="event-card-head">
+        <span class="pill status <%= event.computedStatus || 'unknown' %>"><%= event.computedStatus || "unknown" %></span>
+        <span class="pill <%= event.deliveryMode %>"><%= event.deliveryMode === "in-person" ? "In person" : event.deliveryMode === "hybrid" ? "Hybrid" : "Digital" %></span>
+      </div>
+
+      <h3 class="event-title-clamp"><%= event.displayTitle || event.title %></h3>
+      <p class="event-description-clamp"><%= event.description || "Hands-on guided lab session." %></p>
+
+      <dl class="event-facts-compact">
+        <div>
+          <dt>Location</dt>
+          <dd><%= event.city || "Virtual" %> · <%= event.timeZone || "UTC" %></dd>
+        </div>
+        <div>
+          <dt>Schedule</dt>
+          <dd><%= new Date(event.startAt).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", year: "numeric", timeZone: "UTC" }) %> · <%= formatDualTimezone(event.startAt, event.timeZone) %> to <%= formatDualTimezone(event.endAt, event.timeZone) %></dd>
+        </div>
+      </dl>
+
+      <a class="primary-link event-register-btn" href="/events/<%= event.id %>/register">Registration and details</a>
+    </article>
+    <% }) %>
+  </div>
+  <% } %>
+</section>
+
+<%- include("partials/footer") %>

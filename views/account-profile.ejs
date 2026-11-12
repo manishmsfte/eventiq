@@ -1,0 +1,54 @@
+<%- include("partials/header", { title: "My Profile", publisher, supervisor, registrant, facilitator, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "My Profile" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Account</p>
+  <h1>My Profile</h1>
+  <% if (currentUser?.partnerName) { %><p><strong>Partner:</strong> <%= currentUser.partnerName %></p><% } %>
+</section>
+
+<% if (message) { %><p class="status"><%= message %></p><% } %>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+
+<section class="split">
+  <div class="panel">
+    <h2>Change Name</h2>
+    <% if (account) { %>
+    <form method="post" action="/account/profile/name" class="stack-form">
+      <label>Display Name<input name="name" value="<%= account.name || '' %>" required /></label>
+      <label>Email<input value="<%= account.email %>" disabled /></label>
+      <label>Persona<input value="<%= account.userType %>" disabled /></label>
+      <% if (account.partnerName) { %><label>Partner<input value="<%= account.partnerName %>" disabled /></label><% } %>
+      <button type="submit">Update Name</button>
+    </form>
+    <% } else { %>
+    <form method="post" action="/account/profile/name" class="stack-form">
+      <label>Salutation<input name="salutation" value="<%= registrantProfile.salutation || '' %>" /></label>
+      <label>First Name<input name="firstName" value="<%= registrantProfile.firstName || '' %>" required /></label>
+      <label>Middle Name<input name="middleName" value="<%= registrantProfile.middleName || '' %>" /></label>
+      <label>Last Name<input name="lastName" value="<%= registrantProfile.lastName || '' %>" required /></label>
+      <button type="submit">Update Name</button>
+    </form>
+    <% } %>
+  </div>
+
+  <% if (account) { %>
+  <div class="panel">
+    <h2>Change Password</h2>
+    <form method="post" action="/account/profile/password" class="stack-form">
+      <label>Current Password<input type="password" name="currentPassword" required autocomplete="current-password" /></label>
+      <label>New Password<input type="password" name="newPassword" required minlength="10" autocomplete="new-password" /></label>
+      <label>Confirm New Password<input type="password" name="confirmPassword" required minlength="10" autocomplete="new-password" /></label>
+      <small class="muted">Use at least 10 characters with uppercase, lowercase, number, and special characters.</small>
+      <button type="submit">Update Password</button>
+    </form>
+  </div>
+  <% } else { %>
+  <div class="panel">
+    <h2>Registrant Access</h2>
+    <p>Registrant access uses your email address and registration code, so there is no password to change.</p>
+  </div>
+  <% } %>
+</section>
+
+<%- include("partials/footer") %>

@@ -1,0 +1,520 @@
+<%- include("partials/header", { title: "Event Team & Sessions", publisher, supervisor, registrant, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Publisher", href: "/publisher" }, { label: event.title, href: `/publisher/events/${event.id}` }, { label: "Event Team & Sessions" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Event Staffing Workspace</p>
+  <h1><%= event.title %></h1>
+  <p>Invite the event team, set availability, and assign each person as Speaker, Proctor, or both for individual sessions.</p>
+</section>
+
+<nav class="agenda-workspace-tabs" aria-label="Session workspace">
+  <button type="button" class="agenda-workspace-tab active" data-workspace-target="agenda-workspace">Agenda</button>
+  <button type="button" class="agenda-workspace-tab" data-workspace-target="event-team">Event Team</button>
+  <button type="button" class="agenda-workspace-tab" data-workspace-target="session-staffing">Assign Sessions</button>
+</nav>
+
+<% if (message) { %><p class="status"><%= message %></p><% } %>
+<% if (error) { %><p class="error"><%= error %></p><% } %>
+
+<%
+  const workshopSessions = sessions.filter((item) => item.rowType === "session");
+  const sessionsNeedingStaff = workshopSessions.filter((item) => !item.speakerMember || !item.proctorMembers.length);
+  const canWrite = accessLevel === "owner" || accessLevel === "write";
+  const canManageTeam = canWrite && operatorType === "publisher";
+%>
+
+<section class="kpi-grid staffing-kpis" id="agenda-summary">
+  <article class="mini-card"><h3>Workshop Sessions</h3><p class="kpi-number"><%= workshopSessions.length %></p></article>
+  <article class="mini-card"><h3>Event Team Members</h3><p class="kpi-number"><%= teamMembers.length %></p></article>
+  <article class="mini-card"><h3>Sessions Ready</h3><p class="kpi-number"><%= workshopSessions.length - sessionsNeedingStaff.length %></p></article>
+  <article class="mini-card"><h3>Need Staffing</h3><p class="kpi-number"><%= sessionsNeedingStaff.length %></p></article>
+</section>
+
+<section class="split split-wide staffing-team-layout" id="event-team" hidden>
+  <% if (canManageTeam) { %>
+  <div class="panel">
+    <h2>Add and Invite a Team Member</h2>
+    <p class="muted">A person has no permanent role. Choose their Speaker or Proctor role for each session after adding them.</p>
+    <form method="post" action="/publisher/events/<%= event.id %>/team-members" class="stack-form" id="teamMemberForm">
+      <label>
+        Add a Person
+        <select name="existingPersonEmail" id="existingPersonEmail">
+          <option value="">Invite a new person</option>
+          <% existingPeople.forEach((person) => { %>
+          <option value="<%= person.email %>" data-name="<%= person.name %>"><%= person.name %><%= person.partnerName ? ` - ${person.partnerName}` : "" %> (<%= person.email %>)</option>
+          <% }) %>
+        </select>
+      </label>
+      <div id="newPersonDetails" class="stack-form">
+        <label>
+          Email
+          <input type="email" name="email" id="teamMemberEmail" placeholder="name@example.com" required>
+        </label>
+        <label>
+          Name
+          <input type="text" name="name" id="teamMemberName" placeholder="Full name" required>
+        </label>
+      </div>
+      <label>
+        Availability
+        <select name="availabilityMode" id="availabilityMode" required>
+          <option value="event">Entire event</option>
+          <option value="selected">Selected sessions</option>
+          <option value="custom">Custom time window</option>
+        </select>
+      </label>
+      <div id="selectedAvailability" hidden>
+        <fieldset>
+          <legend>Available Sessions</legend>
+          <% workshopSessions.forEach((item) => { %>
+          <label class="checkbox-row">
+            <input type="checkbox" name="availableSessionIds" value="<%= item.id %>">
+            <span><%= item.sequence %>. <%= item.title %> (<%= new Date(item.startAt).toLocaleString() %>)</span>
+          </label>
+          <% }) %>
+        </fieldset>
+      </div>
+      <div id="customAvailability" class="form-grid two" hidden>
+        <label>
+          Available From
+          <input type="datetime-local" name="availableFrom" value="<%= new Date(event.startAt).toISOString().slice(0, 16) %>">
+        </label>
+        <label>
+          Available To
+          <input type="datetime-local" name="availableTo" value="<%= new Date(event.endAt).toISOString().slice(0, 16) %>">
+        </label>
+      </div>
+      <fieldset>
+        <legend>Optional Initial Assignment</legend>
+        <p class="muted">Choose either option or both. Breaks are excluded. These full-day assignments are also applied automatically to sessions added later.</p>
+        <label class="checkbox-row">
+          <input type="checkbox" name="assignSpeakerAll" value="true">
+          <span>Assign as Speaker in every available session</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" name="assignProctorAll" value="true">
+          <span>Assign as Proctor in every available session</span>
+        </label>
+      </fieldset>
+      <div class="info-box">
+        New team members receive a secure, one-time password setup link. Existing facilitators keep their current login.
+      </div>
+      <button type="submit" id="addTeamMemberButton">Add Team Member and Send Invitation</button>
+    </form>
+  </div>
+  <% } %>
+
+  <div class="panel">
+    <div class="section-head">
+      <div>
+        <h2>Event Team</h2>
+        <p class="muted">Availability is separate from the role played in each session.</p>
+      </div>
+    </div>
+    <% if (!teamMembers.length) { %>
+    <p class="empty-card">No team members yet. Add the first person to begin staffing sessions.</p>
+    <% } else { %>
+    <div class="staffing-team-list">
+      <% teamMembers.forEach((member) => { %>
+      <article class="mini-card staffing-member-card">
+        <div>
+          <h3><%= member.name %></h3>
+          <p class="muted"><%= member.email %></p>
+        </div>
+        <div class="persona-chips">
+          <span class="pill read"><%= member.availableSessionIds.length ? `Available for ${member.availableSessionIds.length} selected session(s)` : "Available for time window" %></span>
+          <span class="pill write">Speaker in <%= member.speakerSessionCount %></span>
+          <span class="pill write">Proctor in <%= member.proctorSessionCount %></span>
+          <% if (member.fullDaySpeaker) { %><span class="pill active">Full-day speaker</span><% } %>
+          <% if (member.fullDayProctor) { %><span class="pill active">Full-day proctor</span><% } %>
+        </div>
+        <p class="muted"><%= member.availableFrom && member.availableTo ? `${new Date(member.availableFrom).toLocaleString()} to ${new Date(member.availableTo).toLocaleString()}` : "Availability not recorded" %></p>
+      </article>
+      <% }) %>
+    </div>
+    <% } %>
+  </div>
+</section>
+
+<section class="panel" id="session-staffing" hidden>
+  <div class="section-head">
+    <div>
+      <h2>Staff the Session Grid</h2>
+      <p class="muted">Choose a person, choose a role, and apply it to all available sessions or just the checked rows. Selecting a speaker replaces the current speaker; adding proctors keeps existing proctors.</p>
+    </div>
+  </div>
+
+  <% if (!workshopSessions.length) { %>
+  <p class="empty-card">Add workshop sessions below before assigning the event team.</p>
+  <% } else { %>
+    <% if (canManageTeam && teamMembers.length) { %>
+    <form id="bulkStaffingForm" method="post" action="/publisher/events/<%= event.id %>/session-staffing/bulk" class="staffing-bulk-bar">
+      <label>
+        Team Member
+        <select name="teamMemberId" id="bulkStaffingMember" required>
+          <option value="">Choose a person</option>
+          <% teamMembers.forEach((member) => { %>
+          <option value="<%= member.id %>"><%= member.name %> - <%= member.email %></option>
+          <% }) %>
+        </select>
+      </label>
+      <fieldset class="staffing-role-options">
+        <legend>Assign as</legend>
+        <label><input type="radio" name="assignmentRole" value="speaker" checked> Speaker</label>
+        <label><input type="radio" name="assignmentRole" value="proctor"> Proctor</label>
+        <label><input type="radio" name="assignmentRole" value="both"> Speaker and Proctor</label>
+      </fieldset>
+      <button type="submit" id="applyBulkStaffing">Apply to Selected Sessions</button>
+      <p class="muted staffing-selection-summary" id="staffingSelectionSummary" aria-live="polite">Choose a team member to see available sessions.</p>
+    </form>
+    <% } %>
+
+    <% workshopSessions.forEach((item) => { %>
+    <form id="staffing-<%= item.id %>" method="post" action="/publisher/events/<%= event.id %>/session-staffing/session">
+      <input type="hidden" name="sessionId" value="<%= item.id %>">
+    </form>
+    <% }) %>
+
+    <div class="compact-table-wrap">
+      <table class="compact-table staffing-table">
+        <thead>
+          <tr>
+            <% if (canManageTeam && teamMembers.length) { %><th><input type="checkbox" id="selectAllStaffingSessions" checked aria-label="Select all workshop sessions"></th><% } %>
+            <th>Session</th>
+            <th>Speaker</th>
+            <th>Proctors</th>
+            <th>Coverage</th>
+            <% if (canManageTeam) { %><th>Action</th><% } %>
+          </tr>
+        </thead>
+        <tbody>
+          <% workshopSessions.forEach((item) => { %>
+          <tr data-available-members="<%= JSON.stringify(teamMembers.filter((member) => isTeamMemberAvailable(member, item)).map((member) => member.id)) %>">
+            <% if (canManageTeam && teamMembers.length) { %>
+            <td><input form="bulkStaffingForm" class="staffing-session-checkbox" type="checkbox" name="selectedSessionIds" value="<%= item.id %>" checked aria-label="Select <%= item.title %>"></td>
+            <% } %>
+            <td>
+              <strong><%= item.sequence %>. <%= item.title %></strong>
+              <p class="muted"><%= new Date(item.startAt).toLocaleString() %> to <%= new Date(item.endAt).toLocaleTimeString() %></p>
+            </td>
+            <td>
+              <% if (canManageTeam) { %>
+              <select form="staffing-<%= item.id %>" name="speakerMemberId">
+                <option value="">No speaker</option>
+                <% teamMembers.forEach((member) => { const available = isTeamMemberAvailable(member, item); %>
+                <option value="<%= member.id %>" <%= item.speakerMember?.id === member.id ? "selected" : "" %> <%= available ? "" : "disabled" %>><%= member.name %><%= available ? "" : " (unavailable)" %></option>
+                <% }) %>
+              </select>
+              <% } else { %>
+              <%= item.speakerMember?.name || "-" %>
+              <% } %>
+            </td>
+            <td>
+              <% if (canManageTeam) { %>
+              <details class="agenda-proctor-picker">
+                <summary>Choose proctors (<%= item.proctorMembers.length %>)</summary>
+                <div class="agenda-proctor-options">
+                <% teamMembers.forEach((member) => { const available = isTeamMemberAvailable(member, item); %>
+                <label><input form="staffing-<%= item.id %>" type="checkbox" name="proctorMemberIds" value="<%= member.id %>" <%= item.proctorMembers.some((selected) => selected.id === member.id) ? "checked" : "" %> <%= available ? "" : "disabled" %>><span><%= member.name %><%= available ? "" : " (unavailable)" %></span></label>
+                <% }) %>
+                </div>
+              </details>
+              <% } else { %>
+              <%= item.proctorMembers.map((member) => member.name).join(", ") || "-" %>
+              <% } %>
+            </td>
+            <td>
+              <% if (item.speakerMember && item.proctorMembers.length) { %>
+              <span class="pill status upcoming">Ready</span>
+              <% } else { %>
+              <span class="pill status canceled"><%= !item.speakerMember ? "Needs speaker" : "Needs proctor" %></span>
+              <% } %>
+            </td>
+            <% if (canManageTeam) { %><td><button form="staffing-<%= item.id %>" type="submit">Save</button></td><% } %>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  <% } %>
+</section>
+
+<section class="panel agenda-workspace-panel" id="agenda-workspace">
+  <details class="agenda-workspace-details" open>
+    <summary><strong>Manage Session Schedule and Content</strong></summary>
+    <div class="agenda-command-bar">
+      <div class="button-row">
+        <% if (canWrite) { %>
+        <button type="button" class="agenda-command primary" data-agenda-panel="add-session-panel">+ Add Session</button>
+        <button type="button" class="agenda-command" data-agenda-panel="paste-agenda-panel">Paste / Templates</button>
+        <button type="submit" class="agenda-command" form="add-breaks-form">Add Breaks</button>
+        <button type="submit" class="agenda-command" form="agenda-grid-form" name="rebalance" value="true">Rebalance Times</button>
+        <% } %>
+      </div>
+      <span class="muted">Click any grid field to edit schedule, staffing, or files.</span>
+    </div>
+    <% if (canWrite) { %><form id="add-breaks-form" method="post" action="/publisher/events/<%= event.id %>/sessions/add-breaks" onsubmit="return confirm('Replace existing snack/lunch rows with 5-minute breaks after about each hour and one 45-minute lunch after about three hours?');"></form><% } %>
+
+    <% if (canWrite) { %>
+    <dialog class="agenda-template-dialog" id="paste-agenda-panel" aria-labelledby="agendaTemplateTitle" data-templates-url="/publisher/events/<%= event.id %>/session-templates">
+      <div class="dialog-heading"><h2 id="agendaTemplateTitle">Paste an agenda or choose a CET template</h2><button type="button" class="button-secondary" data-close-agenda-panels aria-label="Close agenda popup">Close</button></div>
+      <p class="muted">Use a published CET agenda or paste your own. Copies session content and durations only, not people, event dates, credentials, or attachments.</p>
+      <div id="agendaTemplateChoices" class="agenda-template-choices"></div>
+      <p id="agendaTemplateStatus" class="muted" aria-live="polite"></p>
+      <button type="button" id="retryAgendaTemplates" class="button-secondary" hidden>Retry loading templates</button>
+      <p class="muted">Paste columns: Part, #, Session, Format, Duration, Focus (Excel, Markdown, or vertical format).</p>
+      <form method="post" action="/publisher/events/<%= event.id %>/sessions/import" class="stack-form">
+        <label>
+          Agenda table
+          <textarea name="agendaTable" id="agendaTable" rows="4" placeholder="Part&#9;#&#9;Session&#9;Format&#9;Duration&#9;Focus&#10;Part 1: Fundamentals&#9;1A&#9;Resource Model&#9;Deck&#9;15 min&#9;Account to item hierarchy" required></textarea>
+        </label>
+        <div class="agenda-import-options">
+          <fieldset>
+            <legend>Import behavior</legend>
+            <label class="checkbox-row"><input type="radio" name="importMode" value="replace" checked><span><strong>Replace current agenda</strong> (recommended)</span></label>
+            <label class="checkbox-row"><input type="radio" name="importMode" value="append"><span>Append below current agenda</span></label>
+          </fieldset>
+          <label>
+            Overall event duration (minutes)
+            <input id="overallDurationMinutes" type="number" name="overallDurationMinutes" min="15" max="10080" value="<%= Math.round((new Date(event.endAt).getTime() - new Date(event.startAt).getTime()) / 60000) %>" required>
+            <small id="overallDurationPreview" class="muted"></small>
+          </label>
+        </div>
+        <p class="info-box">Replace deletes the existing agenda only after the pasted rows and overall duration pass validation.</p>
+        <div class="button-row"><button type="submit">Import Pasted Agenda</button><button type="button" class="button-secondary" data-close-agenda-panels>Cancel</button></div>
+      </form>
+    </dialog>
+    <% } %>
+
+    <% if (sessions.length) { %>
+    <% if (canWrite) { %>
+    <div class="agenda-grid-heading"><div><h2>Editable Agenda</h2><p class="muted">Everything saves together in this grid. Use proctor checkboxes, or open Assign Sessions to staff several sessions in one action.</p></div><span class="pill read"><%= sessions.length %> rows</span></div>
+    <div class="button-row agenda-grid-actions agenda-grid-actions-top">
+      <button type="submit" form="agenda-grid-form">Save Agenda</button>
+      <button type="submit" form="agenda-grid-form" name="rebalance" value="true" class="button-secondary">Save and Rebalance Times</button>
+    </div>
+    <form id="agenda-grid-form" method="post" action="/publisher/events/<%= event.id %>/sessions/grid" enctype="multipart/form-data">
+    <div class="compact-table-wrap">
+      <table class="compact-table agenda-edit-grid">
+        <thead><tr><th class="agenda-col-order">#</th><th class="agenda-col-part">Part / #</th><th class="agenda-col-session">Session / Focus</th><th class="agenda-col-format">Format / Min</th><th class="agenda-col-start">Start</th><th class="agenda-col-team">Team</th><th class="agenda-col-actions">Files / Actions</th></tr></thead>
+        <tbody>
+          <% sessions.forEach((item, index) => { %>
+          <tr class="<%= item.rowType === 'session' ? '' : 'agenda-break-row' %>">
+            <td><input type="hidden" name="rows[<%= index %>][id]" value="<%= item.id %>"><input type="number" name="rows[<%= index %>][sequence]" min="1" value="<%= item.sequence %>" required></td>
+            <td><div class="agenda-inline-fields part-code-fields"><input type="text" name="rows[<%= index %>][part]" value="<%= item.part || '' %>" placeholder="Part"><input type="text" name="rows[<%= index %>][sessionCode]" value="<%= item.sessionCode || item.sequence %>" placeholder="#"></div></td>
+            <td><div class="agenda-stacked-fields"><input type="text" name="rows[<%= index %>][title]" value="<%= item.title %>" required><textarea name="rows[<%= index %>][focus]" rows="1" placeholder="Focus"><%= item.description || "" %></textarea></div></td>
+            <td><div class="agenda-inline-fields format-duration-fields"><input type="text" name="rows[<%= index %>][format]" value="<%= item.format || (item.rowType === 'session' ? 'Session' : item.rowType) %>"><input type="number" name="rows[<%= index %>][durationMinutes]" min="1" value="<%= item.durationMinutes %>" required aria-label="Minutes"></div></td>
+            <td><input type="datetime-local" name="rows[<%= index %>][startAt]" value="<%= new Date(item.startAt).toISOString().slice(0, 16) %>" required></td>
+            <td>
+              <% if (item.rowType === "session") { %>
+              <div class="agenda-team-fields">
+                <label><span>Speaker</span><select name="rows[<%= index %>][speakerMemberId]">
+                  <option value="">No speaker</option>
+                  <% teamMembers.forEach((member) => { const available = isTeamMemberAvailable(member, item); %>
+                  <option value="<%= member.id %>" <%= item.speakerMember?.id === member.id ? "selected" : "" %> <%= available ? "" : "disabled" %>><%= member.name %><%= available ? "" : " (unavailable)" %></option>
+                  <% }) %>
+                </select></label>
+                <details class="agenda-proctor-picker">
+                  <summary>Proctors (<%= item.proctorMembers.length %>)</summary>
+                  <div class="agenda-proctor-options">
+                    <% teamMembers.forEach((member) => { const available = isTeamMemberAvailable(member, item); %>
+                    <label><input type="checkbox" name="rows[<%= index %>][proctorMemberIds]" value="<%= member.id %>" <%= item.proctorMembers.some((selected) => selected.id === member.id) ? "checked" : "" %> <%= available ? "" : "disabled" %>><span><%= member.name %><%= available ? "" : " (unavailable)" %></span></label>
+                    <% }) %>
+                  </div>
+                </details>
+              </div>
+              <% } else { %>-<% } %>
+            </td>
+            <td><div class="agenda-row-actions">
+              <% if (item.rowType === "session") { %>
+                <% if (item.tsgFileName) { %><a class="agenda-file-name" href="/events/<%= event.id %>/sessions/<%= item.id %>/tsg" title="<%= item.tsgFileName %>"><%= item.tsgFileName %></a><% } %>
+                <label class="agenda-file-button"><span><%= item.tsgFileName ? "Replace file" : "Attach file" %></span><input type="file" name="rows[<%= index %>][tsgFile]" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"></label>
+                <% if (item.tsgFileName) { %><label class="checkbox-row compact"><input type="checkbox" name="rows[<%= index %>][removeTsg]" value="true"><span>Remove file</span></label><% } %>
+              <% } %>
+              <label class="checkbox-row compact"><input type="checkbox" name="rows[<%= index %>][remove]" value="true" aria-label="Remove <%= item.title %>"><span>Remove row</span></label>
+            </div></td>
+          </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+    <div class="button-row agenda-grid-actions">
+      <button type="submit">Save Agenda</button>
+      <button type="submit" name="rebalance" value="true" class="button-secondary">Save and Rebalance Times</button>
+    </div>
+    </form>
+    <% } else { %>
+    <div class="compact-table-wrap">
+      <table class="compact-table">
+        <thead><tr><th>#</th><th>Session</th><th>Format</th><th>Duration</th><th>Focus</th></tr></thead>
+        <tbody><% sessions.forEach((item) => { %><tr><td><%= item.sessionCode || item.sequence %></td><td><%= item.title %></td><td><%= item.format || item.rowType %></td><td><%= item.durationMinutes %> min</td><td><%= item.description || "" %></td></tr><% }) %></tbody>
+      </table>
+    </div>
+    <% } %>
+    <% } %>
+
+    <% if (canWrite) { %>
+    <div class="agenda-click-panel" id="add-session-panel">
+    <div class="agenda-grid-heading"><div><h2>Add Session or Break</h2><p class="muted">Add one row, or create any missing hourly placeholders.</p></div><form method="post" action="/publisher/events/<%= event.id %>/sessions/auto-generate"><button type="submit" class="button-secondary"><%= sessions.length ? "Fill Missing Hourly Slots" : "Auto-Generate Hourly Sessions" %></button></form></div>
+    <form method="post" action="/publisher/events/<%= event.id %>/sessions" enctype="multipart/form-data" class="stack-form session-row-form">
+      <div class="form-grid two">
+        <label>Order<input type="number" name="sequence" min="1" value="<%= sessions.length + 1 %>" required></label>
+        <label>Type<select name="rowType" required><option value="session">Session</option><option value="lunch">Lunch break</option><option value="snack">Snack break</option></select></label>
+      </div>
+      <label>Title<input type="text" name="title" required></label>
+      <label>Description<textarea name="description" rows="2"></textarea></label>
+      <label>TSG attachment<input type="file" name="tsgFile" accept=".pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,.txt"></label>
+      <div class="form-grid two">
+        <label>Duration<input class="session-duration" type="number" name="durationMinutes" min="1" value="60" required></label>
+        <label>Start<input class="session-start" type="datetime-local" name="startAt" value="<%= new Date(sessions.length ? sessions[sessions.length - 1].endAt : event.startAt).toISOString().slice(0, 16) %>"></label>
+      </div>
+      <p class="muted session-end-preview"></p>
+      <button type="submit">Add to Session Grid</button>
+    </form>
+    </div>
+    <% } %>
+  </details>
+</section>
+
+<script>
+  const agendaWorkspace = document.getElementById("agenda-workspace");
+  const agendaSummary = document.getElementById("agenda-summary");
+  const eventTeam = document.getElementById("event-team");
+  const sessionStaffing = document.getElementById("session-staffing");
+  if (agendaWorkspace && agendaSummary) {
+    agendaWorkspace.prepend(agendaSummary);
+  }
+
+  function showAgendaWorkspace(target) {
+    if (!["agenda-workspace", "event-team", "session-staffing"].includes(target)) target = "agenda-workspace";
+    agendaWorkspace.hidden = target !== "agenda-workspace";
+    agendaSummary.hidden = target !== "agenda-workspace";
+    eventTeam.hidden = target !== "event-team";
+    sessionStaffing.hidden = target !== "session-staffing";
+    document.querySelectorAll("[data-workspace-target]").forEach((button) => {
+      const active = button.dataset.workspaceTarget === target;
+      button.classList.toggle("active", active);
+      button.setAttribute("aria-pressed", String(active));
+    });
+  }
+  document.querySelectorAll("[data-workspace-target]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const target = button.dataset.workspaceTarget;
+      showAgendaWorkspace(target);
+      history.replaceState(null, "", `#${target}`);
+    });
+  });
+  showAgendaWorkspace(location.hash.slice(1));
+  window.addEventListener("hashchange", () => showAgendaWorkspace(location.hash.slice(1)));
+
+  const closeAgendaPanels = () => {
+    document.querySelectorAll(".agenda-click-panel").forEach((panel) => panel.classList.remove("open"));
+    document.querySelectorAll(".agenda-template-dialog[open]").forEach((panel) => panel.close());
+    document.querySelectorAll("[data-agenda-panel]").forEach((button) => button.classList.remove("active"));
+  };
+  document.querySelectorAll("[data-agenda-panel]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const panel = document.getElementById(button.dataset.agendaPanel);
+      if (panel instanceof HTMLDialogElement) {
+        closeAgendaPanels();
+        panel.showModal();
+        panel.dispatchEvent(new Event("agenda:open"));
+        return;
+      }
+      const shouldOpen = !panel.classList.contains("open");
+      closeAgendaPanels();
+      if (shouldOpen) {
+        panel.classList.add("open");
+        button.classList.add("active");
+        panel.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }
+    });
+  });
+  document.querySelectorAll("[data-close-agenda-panels]").forEach((button) => {
+    button.addEventListener("click", closeAgendaPanels);
+  });
+
+  const overallDurationMinutes = document.getElementById("overallDurationMinutes");
+  const overallDurationPreview = document.getElementById("overallDurationPreview");
+  if (overallDurationMinutes && overallDurationPreview) {
+    const updateOverallDurationPreview = () => {
+      const minutes = Number(overallDurationMinutes.value || 0);
+      const hours = Math.floor(minutes / 60);
+      const remainingMinutes = minutes % 60;
+      const endAt = new Date(new Date("<%= event.startAt %>").getTime() + minutes * 60000);
+      overallDurationPreview.textContent = minutes > 0
+        ? `${hours} hr ${remainingMinutes} min; event ends ${endAt.toLocaleString()}`
+        : "";
+    };
+    overallDurationMinutes.addEventListener("input", updateOverallDurationPreview);
+    updateOverallDurationPreview();
+  }
+
+  const existingPersonEmail = document.getElementById("existingPersonEmail");
+  const teamMemberEmail = document.getElementById("teamMemberEmail");
+  const teamMemberName = document.getElementById("teamMemberName");
+  const addTeamMemberButton = document.getElementById("addTeamMemberButton");
+  if (existingPersonEmail) {
+    const syncExistingPerson = () => {
+      const selectedOption = existingPersonEmail.options[existingPersonEmail.selectedIndex];
+      const isExisting = Boolean(existingPersonEmail.value);
+      teamMemberEmail.value = isExisting ? existingPersonEmail.value : "";
+      teamMemberName.value = isExisting ? selectedOption.dataset.name : "";
+      teamMemberEmail.readOnly = isExisting;
+      teamMemberName.readOnly = isExisting;
+      addTeamMemberButton.textContent = isExisting
+        ? "Add Existing Person to Event Team"
+        : "Add Team Member and Send Invitation";
+    };
+    existingPersonEmail.addEventListener("change", syncExistingPerson);
+    syncExistingPerson();
+  }
+
+  const availabilityMode = document.getElementById("availabilityMode");
+  const selectedAvailability = document.getElementById("selectedAvailability");
+  const customAvailability = document.getElementById("customAvailability");
+  if (availabilityMode) {
+    const syncAvailability = () => {
+      selectedAvailability.hidden = availabilityMode.value !== "selected";
+      customAvailability.hidden = availabilityMode.value !== "custom";
+    };
+    availabilityMode.addEventListener("change", syncAvailability);
+    syncAvailability();
+  }
+
+  const selectAllStaffingSessions = document.getElementById("selectAllStaffingSessions");
+  if (selectAllStaffingSessions) {
+    selectAllStaffingSessions.addEventListener("change", () => {
+      document.querySelectorAll(".staffing-session-checkbox").forEach((checkbox) => {
+        checkbox.checked = selectAllStaffingSessions.checked;
+      });
+    });
+  }
+
+  document.querySelectorAll(".session-row-form").forEach((form) => {
+    const start = form.querySelector(".session-start");
+    const duration = form.querySelector(".session-duration");
+    const preview = form.querySelector(".session-end-preview");
+    const updatePreview = () => {
+      const startDate = start.value ? new Date(start.value) : new Date("<%= event.startAt %>");
+      const minutes = Number(duration.value || 0);
+      if (!Number.isNaN(startDate.getTime()) && minutes > 0) {
+        preview.textContent = `Calculated end: ${new Date(startDate.getTime() + minutes * 60000).toLocaleString()}`;
+      }
+    };
+    start.addEventListener("input", updatePreview);
+    duration.addEventListener("input", updatePreview);
+    updatePreview();
+  });
+
+  document.querySelectorAll(".copy-tsg-link").forEach((button) => {
+    button.addEventListener("click", async () => {
+      if (!await EventIQ.copyText(button.dataset.tsgLink, "Session content link copied.")) return;
+      button.textContent = "Copied";
+      window.setTimeout(() => { button.textContent = "Copy TSG Link"; }, 1400);
+    });
+  });
+</script>
+
+<script src="/agenda-tools.js?v=<%= assetVersion %>" defer></script>
+<%- include("partials/footer") %>

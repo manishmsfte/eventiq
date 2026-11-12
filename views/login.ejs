@@ -1,0 +1,93 @@
+<%- include("partials/header", { title: "Login", publisher, supervisor, registrant, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Login" }] }) %>
+
+<section class="auth-wrap auth-compact">
+  <h1>One Login for All Personas</h1>
+  <a class="context-help-link" href="/help#roles">Help choosing a role</a>
+  <p>Select your persona and sign in. The header will show your name and active persona.</p>
+
+  <% if (error) { %>
+  <p class="error"><%= error %></p>
+  <% } %>
+
+  <form method="post" action="/login" class="stack-form" id="unifiedLoginForm">
+    <label>
+      Persona
+      <select name="persona" id="personaSelect" required>
+        <option value="publisher" <%= persona === "publisher" ? "selected" : "" %>>Publisher</option>
+        <option value="supervisor" <%= persona === "supervisor" ? "selected" : "" %>>Supervisor</option>
+        <option value="registrant" <%= persona === "registrant" ? "selected" : "" %>>Registrant</option>
+        <option value="facilitator" <%= persona === "facilitator" ? "selected" : "" %>>Facilitator</option>
+        <option value="speaker" <%= persona === "speaker" ? "selected" : "" %>>Speaker</option>
+        <option value="proctor" <%= persona === "proctor" ? "selected" : "" %>>Proctor</option>
+      </select>
+    </label>
+
+    <div id="emailPasswordFields" class="stack-form inner-form">
+      <label>
+        Email
+        <input type="email" name="email" id="loginEmail" placeholder="name@microsoft.com" />
+      </label>
+
+      <label>
+        Password
+        <input type="password" name="password" id="loginPassword" />
+      </label>
+    </div>
+
+    <div id="registrantFields" class="stack-form inner-form">
+      <label>
+        Registered Email
+        <input type="email" name="attendeeEmail" id="registrantEmail" value="<%= attendeeEmail || '' %>" />
+      </label>
+
+      <label>
+        Registration Code
+        <input type="text" name="registrationCode" id="registrationCode" value="<%= registrationCode || '' %>" />
+      </label>
+    </div>
+
+    <button type="submit">Sign In</button>
+  </form>
+
+  <p class="muted top-gap">Need to deregister quickly?</p>
+  <a href="/registrant/deregister">Use quick deregister</a>
+</section>
+
+<script>
+  const personaSelect = document.getElementById('personaSelect');
+  const emailPasswordFields = document.getElementById('emailPasswordFields');
+  const registrantFields = document.getElementById('registrantFields');
+  const loginEmail = document.getElementById('loginEmail');
+  const loginPassword = document.getElementById('loginPassword');
+  const registrantEmail = document.getElementById('registrantEmail');
+  const registrationCode = document.getElementById('registrationCode');
+
+  function syncLoginFields() {
+    const persona = personaSelect.value;
+    const registrant = persona === 'registrant';
+
+    registrantFields.style.display = registrant ? 'grid' : 'none';
+    emailPasswordFields.style.display = registrant ? 'none' : 'grid';
+
+    registrantEmail.required = registrant;
+    registrationCode.required = registrant;
+    loginEmail.required = !registrant;
+    loginPassword.required = !registrant;
+
+    if (persona === 'publisher') {
+      loginEmail.placeholder = 'publisher@microsoft.com';
+    } else if (persona === 'supervisor') {
+      loginEmail.placeholder = 'supervisor@microsoft.com';
+    } else if (['facilitator', 'speaker', 'proctor'].includes(persona)) {
+      loginEmail.placeholder = 'facilitator@example.com';
+    } else {
+      loginEmail.placeholder = 'name@example.com';
+    }
+  }
+
+  personaSelect.addEventListener('change', syncLoginFields);
+  syncLoginFields();
+</script>
+
+<%- include("partials/footer") %>

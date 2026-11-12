@@ -1,0 +1,123 @@
+<%- include("partials/header", { title: "Publisher Feedback", publisher, supervisor, registrant }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Publisher", href: "/publisher" }, { label: event.title, href: `/publisher/events/${event.id}` }, { label: "Feedback" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Feedback Workspace</p>
+  <h1><%= event.title %></h1>
+  <p>Feedback is isolated on this page to keep registration operations separate.</p>
+</section>
+
+<section class="panel">
+  <h2>Feedback KPI</h2>
+  <div class="kpi-grid">
+    <article class="mini-card">
+      <h3>Total Feedback</h3>
+      <p class="kpi-number"><%= feedbackReport.total %></p>
+    </article>
+    <article class="mini-card">
+      <h3>Average Rating</h3>
+      <p class="kpi-number"><%= feedbackReport.averageRating || "N/A" %></p>
+    </article>
+    <article class="mini-card">
+      <h3>Recommend Rate</h3>
+      <p class="kpi-number">
+        <%= feedbackReport.total ? Math.round((feedbackReport.recommends / feedbackReport.total) * 100) : 0 %>%
+      </p>
+    </article>
+    <article class="mini-card">
+      <h3>Project Help Requests</h3>
+      <p class="kpi-number"><%= feedbackReport.followUpInterest ? feedbackReport.followUpInterest.yes : 0 %></p>
+    </article>
+  </div>
+
+  <% if (allFeedback.length) { %>
+  <div class="chart-grid">
+    <article class="mini-card">
+      <h3>Rating Distribution</h3>
+      <canvas id="ratingChart" height="180"></canvas>
+      <div class="inline-actions">
+        <a href="/publisher/events/<%= event.id %>/feedback">All Ratings</a>
+        <% feedbackReport.ratingBuckets.forEach((bucket) => { %>
+        <a href="/publisher/events/<%= event.id %>/feedback?rating=<%= bucket.rating %>">
+          <%= bucket.rating %> Star
+        </a>
+        <% }) %>
+      </div>
+    </article>
+
+    <article class="mini-card">
+      <h3>Recommendation Split</h3>
+      <canvas id="recommendationChart" height="180"></canvas>
+    </article>
+  </div>
+  <% } %>
+
+  <% if (!allFeedback.length) { %>
+  <p>No feedback submitted yet.</p>
+  <% } %>
+
+  <% if (filters.rating) { %>
+  <p class="status">Showing drill-through for <strong><%= filters.rating %>-star</strong> feedback.</p>
+  <% } %>
+
+  <div class="scroll-list">
+    <% feedback.forEach((item) => { %>
+    <article class="mini-card">
+      <h3>Feedback Response</h3>
+      <p><strong>Rating:</strong> <%= item.rating %> / 5</p>
+      <p><strong>Recommend:</strong> <%= item.recommendation %></p>
+      <p><strong>Needs Project Help:</strong> <%= item.needsProjectHelp || "no" %></p>
+      <p><strong>Project Types:</strong> <%= Array.isArray(item.projectTypes) ? item.projectTypes.join(", ") || "N/A" : "N/A" %></p>
+      <p><strong>Follow-up Types:</strong> <%= Array.isArray(item.followUpTypes) ? item.followUpTypes.join(", ") || "N/A" : item.followUpType || "N/A" %></p>
+      <% if (item.contactConsent === "yes" && item.candidateEmail) { %>
+      <p><strong>Follow-up Email:</strong> <%= item.candidateEmail %></p>
+      <% } %>
+      <p><strong>Follow-up Details:</strong> <%= item.followUpDetails || "N/A" %></p>
+      <%- include("partials/feedback-session-ratings", { feedback: item }) %>
+      <p><strong>Comments:</strong> <%= item.comments %></p>
+      <p><strong>Submitted:</strong> <%= new Date(item.createdAt).toLocaleString() %></p>
+    </article>
+    <% }) %>
+  </div>
+</section>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ratingBuckets = <%- JSON.stringify(feedbackReport.ratingBuckets || []) %>;
+  const recommendationSplit = <%- JSON.stringify(feedbackReport.recommendationSplit || { yes: 0, no: 0 }) %>;
+
+  if (ratingBuckets.length && document.getElementById('ratingChart')) {
+    new Chart(document.getElementById('ratingChart'), {
+      type: 'bar',
+      data: {
+        labels: ratingBuckets.map((x) => `${x.rating} Star`),
+        datasets: [{
+          label: 'Responses',
+          data: ratingBuckets.map((x) => x.count),
+          backgroundColor: ['#f4a261', '#e9c46a', '#2a9d8f', '#52b788', '#264653']
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+      }
+    });
+  }
+
+  if (document.getElementById('recommendationChart')) {
+    new Chart(document.getElementById('recommendationChart'), {
+      type: 'doughnut',
+      data: {
+        labels: ['Yes', 'No'],
+        datasets: [{
+          data: [recommendationSplit.yes || 0, recommendationSplit.no || 0],
+          backgroundColor: ['#2a9d8f', '#e76f51']
+        }]
+      },
+      options: { responsive: true }
+    });
+  }
+</script>
+
+<%- include("partials/footer") %>

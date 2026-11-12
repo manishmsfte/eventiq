@@ -1,0 +1,36 @@
+<%- include("partials/header", { title: "Quick Deregister", publisher, supervisor, registrant }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Registrant Deregister" }] }) %>
+
+<section class="auth-wrap">
+  <h1>Quick Deregister</h1>
+  <p>Use your registration code and registered email to remove your booking quickly.</p>
+
+  <% if (message) { %>
+  <p class="status"><%= message %></p>
+  <% } %>
+
+  <% if (error) { %>
+  <p class="error"><%= error %></p>
+  <% } %>
+
+  <form method="post" action="/registrant/deregister" class="stack-form">
+    <label>
+      Registered Email
+      <input type="email" name="attendeeEmail" value="<%= defaults.attendeeEmail %>" required />
+    </label>
+
+    <label>
+      Registration Code
+      <input type="text" name="registrationCode" value="<%= defaults.registrationCode %>" required />
+    </label>
+
+    <label>
+      Reason (optional)
+      <input type="text" name="reason" />
+    </label>
+
+    <button type="submit" class="danger">Deregister</button>
+  </form>
+</section>
+
+<%- include("partials/footer") %>

@@ -1,0 +1,8 @@
+{
+  "name": "nosqlreg-permanent-redirect",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "node redirect-server.js"
+  }
+}

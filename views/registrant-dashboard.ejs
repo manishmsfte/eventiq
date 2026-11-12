@@ -1,0 +1,195 @@
+<%- include("partials/header", { title: "My Registrations", publisher, supervisor, registrant }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "My Registrations" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Registrant Workspace</p>
+  <h1>My Event Timeline</h1>
+  <a class="context-help-link" href="/help#registrants">Registrant help</a>
+  <p>Upcoming events are shown first, followed by attended/past events.</p>
+</section>
+
+<% if (message) { %>
+<p class="status"><%= message %></p>
+<% } %>
+
+<section class="panel">
+  <h2>Your Lab Details</h2>
+  <p>Once authenticated, you can view the following information for your lab:</p>
+  <ul>
+    <li><strong>Lab link:</strong> Step-by-step instructions to follow.</li>
+    <li>
+      <strong>Virtual Machine Details:</strong> The lab content is cloned in the
+      <strong>Documents</strong> folder on the virtual machine.
+      <ul>
+        <li><strong>VM Link:</strong> Opens the virtual machine in your web browser.</li>
+        <li><strong>VM User/Password:</strong> Credentials for signing in to the virtual machine.</li>
+      </ul>
+    </li>
+    <li>
+      <strong>Azure portal link:</strong> Opens the Azure portal, where all required services are pre-deployed.
+      <ul>
+        <li><strong>Azure Portal User:</strong> User name for accessing the Azure subscription.</li>
+        <li><strong>Azure Portal Password:</strong> Password for accessing the Azure subscription.</li>
+        <li><strong>Database Name:</strong> The assigned Azure DocumentDB cluster or Azure Cosmos DB account.</li>
+        <li><strong>Azure AI Foundry Name:</strong> The assigned Foundry account when included in the lab.</li>
+      </ul>
+    </li>
+    <li><strong>Questions:</strong> Contact the instructor or proctor for assistance.</li>
+  </ul>
+  <p class="status"><strong>Important:</strong> The VM status must be <strong>Running</strong> before you open the Bastion VM link.</p>
+  <p class="muted">Your event-specific links and credentials appear in the registration cards below when assigned.</p>
+</section>
+
+<section class="split">
+  <div class="panel">
+    <h2>Upcoming / Ongoing</h2>
+    <% if (!upcoming.length) { %>
+    <p>No upcoming registrations.</p>
+    <% } %>
+
+    <div class="scroll-list">
+      <% upcoming.forEach((item) => { %>
+      <article class="mini-card">
+        <h3><%= item.event ? item.event.title : "Unknown Event" %></h3>
+        <%- include("partials/event-partner", { event: item.event, compact: true }) %>
+        <p><strong>Registration Status:</strong> <%= item.registration.status || "registered" %></p>
+        <% if ((item.registration.status || "registered") === "registered") { %>
+        <p><strong>Registration Code:</strong> <%= item.registration.registrationCode %></p>
+        <% } %>
+        <p>
+          <strong>Window:</strong>
+          <%= item.event ? formatDualTimezone(item.event.startAt, item.event.timeZone) : "N/A" %> -
+          <%= item.event ? formatDualTimezone(item.event.endAt, item.event.timeZone) : "N/A" %>
+        </p>
+        <p><strong>Status:</strong> <%= item.eventStatus %></p>
+        <% if ((item.registration.status || "registered") === "registered") { %>
+        <p><a href="/registrations/<%= item.registration.id %>/invite.ics">Download Invite (.ics)</a></p>
+        <% } else { %>
+        <p class="status">Your submission is pending approval, you will be notified once it is approved.</p>
+        <% } %>
+        <% if (item.event && ["ongoing", "completed"].includes(item.eventStatus)) { %>
+        <p><a href="/events/<%= item.event.id %>/feedback">Event Feedback</a></p>
+        <% } %>
+        <% if (item.registration.labWebUri || item.registration.labVmUsername || item.registration.labVmPassword || item.registration.labPortalUsername || item.registration.labPortalPassword || item.registration.labResourceGroup || item.registration.labDatabaseAccountName || item.registration.labFoundryAccountName || (item.event && item.event.holUri)) { %>
+        <% const portalTempPass = item.registration.labPortalPassword || (item.registration.labPortalUsername && item.registration.labVmPassword ? item.registration.labVmPassword : ""); %>
+        <% const labDatabaseType = item.registration.labDatabaseAccountType || (item.event && /documentdb/i.test(item.event.title || "") ? "documentdb" : item.event && /(cosmos|nosql)/i.test(item.event.title || "") ? "cosmosdb" : ""); %>
+        <div class="direct-link-box">
+          <h3>Lab Access</h3>
+          <% if (item.event && item.event.holUri) { %>
+          <p><strong>Hands-on Labs:</strong> <a href="<%= item.event.holUri %>" target="_blank" rel="noreferrer"><%= item.event.holUri %></a></p>
+          <% } %>
+          <% if (item.registration.labWebUri || item.registration.labVmUsername || item.registration.labVmPassword) { %>
+          <fieldset class="lab-detail-group"><legend>VM Details</legend>
+            <% const vmStatus = String(item.registration.labVmStatus || "unknown").toLowerCase(); %>
+            <p><strong>VM Status:</strong> <span class="pill <%= vmStatus === "running" ? "active" : vmStatus === "failed" ? "inactive" : "read" %>"><%= vmStatus %></span></p>
+            <% if (item.registration.labVmStatusMessage) { %><p class="muted"><%= item.registration.labVmStatusMessage %></p><% } %>
+            <p class="muted">The VM must be Running before you open the Bastion VM link.</p>
+            <% if (item.registration.labWebUri && vmStatus === "running") { %><p><strong>VM Link:</strong> <a href="<%= item.registration.labWebUri %>" target="_blank" rel="noreferrer"><%= item.registration.labWebUri %></a></p><% } else if (item.registration.labWebUri) { %><p><strong>VM Link:</strong> Available when the VM status is Running.</p><% } %>
+            <% if (item.registration.labVmUsername) { %><p><strong>VM User Name:</strong> <%= item.registration.labVmUsername %></p><% } %>
+            <% if (item.registration.labVmPassword) { %><p><strong>VM Password:</strong> <%= item.registration.labVmPassword %></p><% } %>
+            <% if (item.registration.labResourceGroup) { %>
+            <form method="post" action="/registrant/labs/<%= item.registration.id %>/vm-power" class="inline-actions">
+              <% if (!["running", "starting"].includes(vmStatus)) { %><button type="submit" name="action" value="start">Start VM</button><% } %>
+              <% if (vmStatus === "running") { %><button type="submit" name="action" value="stop" class="danger">Stop VM</button><% } %>
+              <% if (["starting", "stopping"].includes(vmStatus)) { %><span class="muted">Power operation in progress...</span><% } %>
+            </form>
+            <% } %>
+          </fieldset>
+          <% } %>
+          <% if (item.registration.labPortalUsername || portalTempPass) { %>
+          <fieldset class="lab-detail-group"><legend>Azure Portal Login Details</legend>
+            <p><strong>Azure Portal:</strong> <a href="https://portal.azure.com" target="_blank" rel="noreferrer">https://portal.azure.com</a></p>
+            <% if (item.registration.labPortalUsername) { %><p><strong>Azure Portal User Name:</strong> <%= item.registration.labPortalUsername %></p><% } %>
+            <% if (portalTempPass) { %><p><strong>Azure Portal Password:</strong> <%= portalTempPass %></p><% } %>
+          </fieldset>
+          <% } %>
+          <% if (item.registration.labResourceGroup) { %>
+          <p><strong>Resource Group:</strong> <%= item.registration.labResourceGroup %></p>
+          <% } %>
+          <% if (item.registration.labDatabaseAccountName) { %>
+          <p><strong><%= labDatabaseType === "documentdb" ? "Azure DocumentDB Cluster Name" : labDatabaseType === "cosmosdb" ? "Azure Cosmos DB Account Name" : "Database Account Name" %>:</strong> <%= item.registration.labDatabaseAccountName %></p>
+          <% if (labDatabaseType === "documentdb" && item.registration.labVmUsername) { %><p><strong>Azure DocumentDB User Name:</strong> <%= String(item.registration.labVmUsername).replace(/_/g, "") %></p><% } %>
+          <% if (labDatabaseType === "documentdb" && item.registration.labVmPassword) { %><p><strong>Azure DocumentDB Password:</strong> <%= item.registration.labVmPassword %></p><% } %>
+          <% } %>
+          <% if (item.registration.labFoundryAccountName) { %>
+          <p><strong>Azure AI Foundry Name:</strong> <%= item.registration.labFoundryAccountName %></p>
+          <% } %>
+        </div>
+        <% } else { %>
+        <p class="muted">Lab details have not been uploaded for this event yet. Check back closer to the event date.</p>
+        <% } %>
+        <form method="post" action="/registrant/deregister" class="stack-form">
+          <input type="hidden" name="registrationId" value="<%= item.registration.id %>" />
+          <label>
+            Deregister Reason (optional)
+            <input type="text" name="reason" />
+          </label>
+          <button type="submit" class="danger">Deregister</button>
+        </form>
+      </article>
+      <% }) %>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>Past Events</h2>
+    <% if (!past.length) { %>
+    <p>No past events yet.</p>
+    <% } %>
+
+    <div class="scroll-list">
+      <% past.forEach((item) => { %>
+      <article class="mini-card">
+        <h3><%= item.event ? item.event.title : "Unknown Event" %></h3>
+        <%- include("partials/event-partner", { event: item.event, compact: true }) %>
+        <p><strong>Organization:</strong> <%= item.registration.organization || "N/A" %></p>
+        <p><strong>Attended:</strong> <%= item.registration.attended ? "Yes" : "No" %></p>
+        <p><strong>Status:</strong> <%= item.eventStatus %></p>
+        <% if ((item.registration.status || "registered") === "registered") { %>
+        <p><a href="/registrations/<%= item.registration.id %>/invite.ics">Download Invite (.ics)</a></p>
+        <% } %>
+        <% if (item.event && ["ongoing", "completed"].includes(item.eventStatus)) { %>
+        <p><a href="/events/<%= item.event.id %>/feedback">Event Feedback</a></p>
+        <% } %>
+        <% if (item.registration.labWebUri || item.registration.labVmUsername || item.registration.labVmPassword || item.registration.labPortalUsername || item.registration.labPortalPassword || item.registration.labResourceGroup || item.registration.labDatabaseAccountName || item.registration.labFoundryAccountName || (item.event && item.event.holUri)) { %>
+        <% const pastPortalTempPass = item.registration.labPortalPassword || (item.registration.labPortalUsername && item.registration.labVmPassword ? item.registration.labVmPassword : ""); %>
+        <% const pastLabDatabaseType = item.registration.labDatabaseAccountType || (item.event && /documentdb/i.test(item.event.title || "") ? "documentdb" : item.event && /(cosmos|nosql)/i.test(item.event.title || "") ? "cosmosdb" : ""); %>
+        <div class="direct-link-box">
+          <h3>Lab Access</h3>
+          <% if (item.event && item.event.holUri) { %>
+          <p><strong>Hands-on Labs:</strong> <a href="<%= item.event.holUri %>" target="_blank" rel="noreferrer"><%= item.event.holUri %></a></p>
+          <% } %>
+          <% if (item.registration.labWebUri || item.registration.labVmUsername || item.registration.labVmPassword) { %>
+          <fieldset class="lab-detail-group"><legend>VM Details</legend>
+            <% if (item.registration.labWebUri) { %><p><strong>VM Link:</strong> <a href="<%= item.registration.labWebUri %>" target="_blank" rel="noreferrer"><%= item.registration.labWebUri %></a></p><% } %>
+            <% if (item.registration.labVmUsername) { %><p><strong>VM User Name:</strong> <%= item.registration.labVmUsername %></p><% } %>
+            <% if (item.registration.labVmPassword) { %><p><strong>VM Password:</strong> <%= item.registration.labVmPassword %></p><% } %>
+          </fieldset>
+          <% } %>
+          <% if (item.registration.labPortalUsername || pastPortalTempPass) { %>
+          <fieldset class="lab-detail-group"><legend>Azure Portal Login Details</legend>
+            <p><strong>Azure Portal:</strong> <a href="https://portal.azure.com" target="_blank" rel="noreferrer">https://portal.azure.com</a></p>
+            <% if (item.registration.labPortalUsername) { %><p><strong>Azure Portal User Name:</strong> <%= item.registration.labPortalUsername %></p><% } %>
+            <% if (pastPortalTempPass) { %><p><strong>Azure Portal Password:</strong> <%= pastPortalTempPass %></p><% } %>
+          </fieldset>
+          <% } %>
+          <% if (item.registration.labResourceGroup) { %>
+          <p><strong>Resource Group:</strong> <%= item.registration.labResourceGroup %></p>
+          <% } %>
+          <% if (item.registration.labDatabaseAccountName) { %>
+          <p><strong><%= pastLabDatabaseType === "documentdb" ? "Azure DocumentDB Cluster Name" : pastLabDatabaseType === "cosmosdb" ? "Azure Cosmos DB Account Name" : "Database Account Name" %>:</strong> <%= item.registration.labDatabaseAccountName %></p>
+          <% if (pastLabDatabaseType === "documentdb" && item.registration.labVmUsername) { %><p><strong>Azure DocumentDB User Name:</strong> <%= String(item.registration.labVmUsername).replace(/_/g, "") %></p><% } %>
+          <% if (pastLabDatabaseType === "documentdb" && item.registration.labVmPassword) { %><p><strong>Azure DocumentDB Password:</strong> <%= item.registration.labVmPassword %></p><% } %>
+          <% } %>
+          <% if (item.registration.labFoundryAccountName) { %>
+          <p><strong>Azure AI Foundry Name:</strong> <%= item.registration.labFoundryAccountName %></p>
+          <% } %>
+        </div>
+        <% } %>
+      </article>
+      <% }) %>
+    </div>
+  </div>
+</section>
+
+<%- include("partials/footer") %>

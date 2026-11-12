@@ -1,0 +1,117 @@
+<%- include("partials/header", { title: "Facilitator Dashboard", publisher, supervisor, registrant, facilitator, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Facilitator Dashboard" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Facilitator Workspace</p>
+  <h1><%= persona === "speaker" ? "Speaker" : persona === "proctor" ? "Proctor" : "Facilitator" %> Dashboard</h1>
+  <p>Upcoming and past events assigned to your facilitator account.</p>
+</section>
+
+<% if (message) { %>
+<p class="status"><%= message %></p>
+<% } %>
+
+<section class="panel">
+  <h2>Upcoming Assignments</h2>
+  <% if (!upcoming.length) { %>
+  <p>No upcoming assignments.</p>
+  <% } else { %>
+  <div class="compact-table-wrap">
+    <table class="compact-table">
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Status</th>
+          <th>Event Date</th>
+          <th>When</th>
+          <th>Time Zone</th>
+          <th>Registrants</th>
+          <th>Attended</th>
+          <th>Availability Window</th>
+          <th>Session Roles</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% upcoming.forEach((item) => { %>
+        <tr>
+          <td>
+            <% if (item.event) { %>
+            <a href="/facilitator/events/<%= item.event.id %>"><%= item.event.title %></a>
+            <%- include("partials/event-partner", { event: item.event, compact: true }) %>
+            <% } else { %>
+            Event unavailable
+            <% } %>
+          </td>
+          <td><span class="pill status <%= item.eventStatus %>"><%= item.eventStatus %></span></td>
+          <td><%= item.event ? new Date(item.event.startAt).toLocaleDateString() : "N/A" %></td>
+          <td><%= item.event ? formatDualTimezone(item.event.startAt, item.event.timeZone) : "N/A" %></td>
+          <td><%= item.event?.timeZone || "UTC" %></td>
+          <td><%= item.registrationCount %></td>
+          <td><%= item.attendedCount %></td>
+          <td><%= new Date(item.assignment.availableFrom).toLocaleString() %> - <%= new Date(item.assignment.availableTo).toLocaleString() %></td>
+          <td>
+            <% if (!item.sessionRoles.length) { %>
+            Not assigned to a session yet
+            <% } else { %>
+            <ul class="compact-list">
+              <% item.sessionRoles.forEach((sessionRole) => { %>
+              <li><%= sessionRole.title %>: <%= sessionRole.roles.join(" & ") %></li>
+              <% }) %>
+            </ul>
+            <% } %>
+          </td>
+          <td>
+            <% if (item.event) { %>
+            <a href="/facilitator/events/<%= item.event.id %>">View Event</a><br />
+            <a href="/publisher/events/<%= item.event.id %>/reports/registrations">Manage Registrations</a>
+            <% } %>
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</section>
+
+<section class="panel">
+  <h2>Past Assignments</h2>
+  <% if (!past.length) { %>
+  <p>No past assignments yet.</p>
+  <% } else { %>
+  <div class="compact-table-wrap">
+    <table class="compact-table">
+      <thead>
+        <tr>
+          <th>Event</th>
+          <th>Event Date</th>
+          <th>Ended</th>
+          <th>Delivery</th>
+          <th>Location</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% past.forEach((item) => { %>
+        <tr>
+          <td>
+            <% if (item.event) { %>
+            <a href="/facilitator/events/<%= item.event.id %>"><%= item.event.title %></a>
+            <%- include("partials/event-partner", { event: item.event, compact: true }) %>
+            <% } else { %>
+            Event unavailable
+            <% } %>
+          </td>
+          <td><%= item.event ? new Date(item.event.startAt).toLocaleDateString() : "N/A" %></td>
+          <td><%= item.event ? formatDualTimezone(item.event.endAt, item.event.timeZone) : "N/A" %></td>
+          <td><%= item.event?.deliveryMode || "N/A" %></td>
+          <td><%= item.event?.city || "Virtual" %></td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </div>
+  <% } %>
+</section>
+
+<%- include("partials/footer") %>

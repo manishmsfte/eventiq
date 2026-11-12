@@ -1,0 +1,11 @@
+<%- include("partials/header", { title: "Partner Application Received", publisher, supervisor, registrant, facilitator, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Partner Application Received" }] }) %>
+
+<section class="auth-wrap">
+  <h1>Application Received</h1>
+  <p>Thank you, <strong><%= partner.submitterName %></strong>.</p>
+  <p data-notification="info">Your application for <strong><%= partner.partnerName %></strong> is pending supervisor approval. Wait for the approver. You will be notified after it is reviewed.</p>
+  <a class="primary-link" href="/">Return to Events</a>
+</section>
+
+<%- include("partials/footer") %>

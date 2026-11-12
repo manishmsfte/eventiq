@@ -1,0 +1,176 @@
+<%- include("partials/header", { title: "Become an Event Partner", htmlClass: "partner-application-root", bodyClass: "partner-application-page", publisher, supervisor, registrant, facilitator, currentUser }) %>
+<%- include("partials/breadcrumbs", { items: [{ label: "Home", href: "/" }, { label: "Become an Event Partner" }] }) %>
+
+<section class="hero slim">
+  <p class="eyebrow">Partner Program</p>
+  <h1>Become an Event Partner</h1>
+  <p>Submit your organization for approval to publish and manage Microsoft workshops.</p>
+  <div class="partner-application-actions">
+    <a id="sampleAgreementDownload" class="primary-link agreement-sample-link" href="/partners/agreement/sample.pdf">Download Sample Agreement (PDF)</a>
+  </div>
+</section>
+
+<section>
+  <form method="post" action="/partners/apply" enctype="multipart/form-data" class="partner-onboarding-layout">
+    <div class="auth-wrap partner-application-panel">
+    <div class="section-head">
+      <div>
+        <p class="eyebrow">Part 1</p>
+        <h2>Partner application</h2>
+        <p class="muted">Provide the organization and authorized signer details.</p>
+      </div>
+    </div>
+    <% if (error) { %><p class="error"><%= error %></p><% } %>
+    <div class="stack-form">
+      <p class="mandatory-note"><span class="required">*</span> Mandatory fields</p>
+      <div class="partner-fields-grid">
+        <label><span class="field-label">Partner Name <span class="required">*</span></span><input id="partnerName" name="partnerName" value="<%= formData.partnerName || '' %>" required /></label>
+        <label><span class="field-label">MPN ID <span class="required">*</span></span><input name="mpnId" value="<%= formData.mpnId || '' %>" required /></label>
+        <label class="partner-field-full"><span class="field-label">Partner Address <span class="required">*</span></span><textarea name="partnerAddress" rows="3" maxlength="500" required><%= formData.partnerAddress || '' %></textarea></label>
+        <label><span class="field-label">Partner Country <span class="required">*</span></span>
+          <select name="partnerCountry" required>
+            <option value="">Select a country</option>
+            <% countries.forEach((country) => { %>
+            <option value="<%= country %>" <%= formData.partnerCountry === country ? "selected" : "" %>><%= country %></option>
+            <% }) %>
+          </select>
+        </label>
+        <label><span class="field-label">Partner Website <span class="required">*</span></span><input type="url" name="websiteUrl" value="<%= formData.websiteUrl || '' %>" placeholder="https://partner.example" required /></label>
+        <label><span class="field-label">Partner Privacy Policy <span class="required">*</span></span><input type="url" name="privacyPolicyUrl" value="<%= formData.privacyPolicyUrl || '' %>" placeholder="https://partner.example/privacy" required /></label>
+        <label><span class="field-label">Submitter Name <span class="required">*</span></span><input name="submitterName" value="<%= formData.submitterName || '' %>" required /></label>
+        <label><span class="field-label">Submitter Email <span class="required">*</span></span><input type="email" name="submitterEmail" value="<%= formData.submitterEmail || '' %>" required /></label>
+        <div class="partner-field-full partner-logo-upload">
+          <label for="partnerLogo"><span class="field-label">Partner Logo (PNG or JPEG, maximum 512 KB) <span class="required">*</span></span></label>
+          <input id="partnerLogo" type="file" name="partnerLogo" accept="image/png,image/jpeg" required />
+          <figure id="partnerLogoPreviewFrame" class="partner-logo-preview-frame" hidden>
+            <img id="partnerLogoPreview" class="partner-logo-preview" alt="Selected partner logo preview" />
+            <figcaption id="partnerLogoPreviewName"></figcaption>
+          </figure>
+          <p id="partnerLogoPreviewStatus" class="muted partner-logo-preview-status">Select a logo to preview it here.</p>
+        </div>
+      </div>
+      <button id="partnerSubmitButton" type="submit" <%= formData.agreementReviewed ? "" : "disabled" %>>Submit for Approval</button>
+    </div>
+    </div>
+
+    <aside class="panel partner-contract-panel" aria-labelledby="partner-contract-title">
+      <div class="partner-contract-header">
+        <p class="eyebrow">Part 2</p>
+        <h2 id="partner-contract-title">Microsoft EventIQ Partner Agreement</h2>
+        <dl class="agreement-metadata">
+          <div><dt>Version</dt><dd><%= agreementVersion %></dd></div>
+          <div><dt>Generated</dt><dd><%= generatedAt.toISOString() %> UTC</dd></div>
+          <div>
+            <dt>Terms</dt>
+            <dd>
+              <a class="agreement-terms-link" href="<%= publicBaseUrl %>/partners/agreement">EventIQ Terms &amp; Conditions</a>
+            </dd>
+          </div>
+        </dl>
+      </div>
+      <p id="agreementReviewStatus" class="agreement-review-status" aria-live="polite">
+        Scroll through the complete agreement to unlock the required digital signature.
+      </p>
+      <div id="partnerContractScroll" class="partner-contract-scroll">
+        <p>This Microsoft EventIQ Partner Agreement is between Microsoft Corporation (“Microsoft”) and the applicant partner organization (“Partner”). It governs Partner’s participation in the EventIQ program.</p>
+        <% agreementSections.forEach((section) => { %>
+        <section>
+          <h3><%= section.title %></h3>
+          <% section.paragraphs.forEach((paragraph) => { %><p><%= paragraph %></p><% }) %>
+        </section>
+        <% }) %>
+        <p id="agreementReviewSentinel" class="contract-acceptance-statement">By selecting the required digital signature and submitting this application, the signing authority agrees to these terms on behalf of Partner.</p>
+      </div>
+      <div class="contract-signature-area">
+        <input id="agreementReviewed" type="hidden" name="agreementReviewed" value="<%= formData.agreementReviewed ? "true" : "false" %>" />
+        <label class="agreement-checkbox">
+          <input id="signAgreementNow" type="checkbox" name="signAgreementNow" value="true" <%= formData.signAgreementNow ? "checked" : "" %> <%= formData.agreementReviewed ? "" : "disabled" %> required />
+          <span>I have reviewed the complete agreement, have authority to bind the partner organization, and digitally sign version <%= agreementVersion %>.</span>
+        </label>
+        <fieldset class="contract-signature-panel">
+          <legend>Required Digital Signature</legend>
+          <p class="muted">The submitter is the primary partner publisher and must be the signing authority.</p>
+          <div class="contract-signature-fields">
+            <label><span class="field-label">Signing Authority Name <span class="required">*</span></span><input name="signingAuthorityName" value="<%= formData.signingAuthorityName || formData.submitterName || '' %>" required /></label>
+            <label><span class="field-label">Signing Authority Email <span class="required">*</span></span><input type="email" name="signingAuthorityEmail" value="<%= formData.signingAuthorityEmail || formData.submitterEmail || '' %>" required /></label>
+          </div>
+        </fieldset>
+      </div>
+    </aside>
+  </form>
+</section>
+
+<script>
+  const agreementReviewed = document.getElementById('agreementReviewed');
+  const agreementReviewSentinel = document.getElementById('agreementReviewSentinel');
+  const signatureCheckbox = document.getElementById('signAgreementNow');
+  const submitButton = document.getElementById('partnerSubmitButton');
+  const reviewStatus = document.getElementById('agreementReviewStatus');
+  const partnerLogoInput = document.getElementById('partnerLogo');
+  const partnerLogoPreviewFrame = document.getElementById('partnerLogoPreviewFrame');
+  const partnerLogoPreview = document.getElementById('partnerLogoPreview');
+  const partnerLogoPreviewName = document.getElementById('partnerLogoPreviewName');
+  const partnerLogoPreviewStatus = document.getElementById('partnerLogoPreviewStatus');
+  const partnerNameInput = document.getElementById('partnerName');
+  const sampleAgreementDownload = document.getElementById('sampleAgreementDownload');
+  let partnerLogoPreviewUrl = '';
+
+  function updateSampleAgreementDownload() {
+    const partnerName = partnerNameInput.value.trim();
+    const query = partnerName ? `?partnerName=${encodeURIComponent(partnerName)}` : '';
+    sampleAgreementDownload.href = `/partners/agreement/sample.pdf${query}`;
+  }
+
+  partnerNameInput.addEventListener('input', updateSampleAgreementDownload);
+  updateSampleAgreementDownload();
+
+  partnerLogoInput.addEventListener('change', () => {
+    if (partnerLogoPreviewUrl) {
+      URL.revokeObjectURL(partnerLogoPreviewUrl);
+      partnerLogoPreviewUrl = '';
+    }
+
+    const [file] = partnerLogoInput.files;
+    if (!file) {
+      partnerLogoPreview.removeAttribute('src');
+      partnerLogoPreviewFrame.hidden = true;
+      partnerLogoPreviewStatus.hidden = false;
+      partnerLogoPreviewStatus.textContent = 'Select a logo to preview it here.';
+      return;
+    }
+
+    partnerLogoPreviewUrl = URL.createObjectURL(file);
+    partnerLogoPreview.src = partnerLogoPreviewUrl;
+    partnerLogoPreviewName.textContent = file.name;
+    partnerLogoPreviewFrame.hidden = false;
+    partnerLogoPreviewStatus.hidden = true;
+  });
+
+  window.addEventListener('pagehide', () => {
+    if (partnerLogoPreviewUrl) {
+      URL.revokeObjectURL(partnerLogoPreviewUrl);
+    }
+  });
+
+  function unlockAgreementSignature() {
+    const reachedEnd =
+      contractScroll.scrollTop + contractScroll.clientHeight >= contractScroll.scrollHeight - 8;
+    if (!reachedEnd && agreementReviewed.value !== 'true') {
+      return;
+    }
+
+    agreementReviewed.value = 'true';
+    signatureCheckbox.disabled = false;
+    submitButton.disabled = false;
+    reviewStatus.textContent = 'Agreement reviewed. Complete the required digital signature at the bottom.';
+    contractScroll.removeEventListener('scroll', unlockAgreementSignature);
+  }
+
+  const contractScroll = document.getElementById('partnerContractScroll');
+  contractScroll.addEventListener('scroll', unlockAgreementSignature, { passive: true });
+  if (agreementReviewed.value === 'true') {
+    unlockAgreementSignature();
+  }
+</script>
+
+<%- include("partials/footer") %>

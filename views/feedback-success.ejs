@@ -1,0 +1,11 @@
+<%- include("partials/header", { title: "Feedback Received", publisher, supervisor, bodyClass: "feedback-page" }) %>
+
+<section class="auth-wrap feedback-shell">
+  <h1>Thank You</h1>
+  <p data-notification="success">Your feedback for <strong><%= event.title %></strong> has been submitted successfully.</p>
+  <div class="inline-actions">
+    <a class="primary-link" href="/">Back to Events</a>
+  </div>
+</section>
+
+<%- include("partials/footer") %>
