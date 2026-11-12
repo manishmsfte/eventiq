@@ -2,6 +2,7 @@
   "name": "eventiq",
   "version": "1.0.0",
   "description": "EventIQ - Complete Event Management App",
+  "license": "PolyForm-Noncommercial-1.0.0",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

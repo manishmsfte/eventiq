@@ -296,3 +296,19 @@ Invoke-WebRequest -Uri "https://hol-reg-mansha-001.azurewebsites.net" -UseBasicP
 For benchmark-specific interpretation and performance-lab workflow details, see:
 
 - `AZURE_DOCUMENTDB_PERF_LAB_GUIDE.md`
+
+## License
+
+The original project code is licensed under the
+[PolyForm Noncommercial License 1.0.0](./LICENSE)
+(SPDX: `PolyForm-Noncommercial-1.0.0`).
+
+Noncommercial learning, personal study, research, testing, and hobby use are
+permitted. Commercial use is not granted under this license. Keep the license
+and required notices when sharing permitted copies or modifications.
+
+This standard license also permits other noncommercial purposes; it is not
+restricted solely to education. The full license controls the permitted uses.
+Third-party dependencies and assets retain their own licenses and ownership.
+
+Required Notice: Copyright (c) 2026 manishmsfte
