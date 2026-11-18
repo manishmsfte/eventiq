@@ -476,6 +476,8 @@ test("renders partner registration branding and pending success", async () => {
   assert.doesNotMatch(optInInput, /\b(?:checked|disabled|required)\b/);
   assert.doesNotMatch(registrationPage, /name="contactConsent"/);
   assert.match(registrationPage, /does not collect contact permissions for Microsoft marketing/);
+  assert.match(registrationPage, /including post-event follow-up\./);
+  assert.match(registrationPage, /As this workshop is being conducted in collaboration with a Microsoft Partner, your registration information may also be shared with the participating Microsoft Partner, who may contact you after the workshop for event-related follow-up, including discussions on the topics covered during the workshop and related solutions or services\./);
   assert.match(registrationPage, />Register<\/button>/);
   assert.match(successPage, /Your submission is pending approval/);
   assert.doesNotMatch(successPage, /Download Invite/);
@@ -546,6 +548,8 @@ test("does not render partner registration fields for internal events", async ()
 
   assert.doesNotMatch(registrationPage, /name="organizationSize"/);
   assert.doesNotMatch(registrationPage, /name="partnerOptIn"/);
+  assert.match(registrationPage, /including event-related follow-up\./);
+  assert.doesNotMatch(registrationPage, /collaboration with a Microsoft Partner/);
 });
 
 test("renders password and registrant profile variants", async () => {
