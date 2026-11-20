@@ -38,7 +38,13 @@
       <section class="compliance-disclosure" aria-label="Privacy Notice">
         <h2 class="compliance-title">Privacy Notice</h2>
         <div class="compliance-copy">
+          <% if (event.partnerId) { %>
+          <p>Microsoft is committed to protecting your privacy. The personal information you provide in this form will be used to register you for this event and communicate event-related information, including post-event follow-up.</p>
+          <p>As this workshop is being conducted in collaboration with a Microsoft Partner, your registration information may also be shared with the participating Microsoft Partner, who may contact you after the workshop for event-related follow-up, including discussions on the topics covered during the workshop and related solutions or services.</p>
+          <p>This form does not collect contact permissions for Microsoft marketing. Your information will be processed in accordance with the <a href="http://go.microsoft.com/fwlink/?LinkId=521839" target="_blank" rel="noreferrer">Microsoft Privacy Statement</a>.</p>
+          <% } else { %>
           <p>Microsoft is committed to protecting your privacy. The personal information you provide in this form will be used to register you for this event and communicate event-related information, including event-related follow-up. This form does not collect contact permissions for Microsoft marketing. Your information will be processed in accordance with the <a href="http://go.microsoft.com/fwlink/?LinkId=521839" target="_blank" rel="noreferrer">Microsoft Privacy Statement</a>.</p>
+          <% } %>
           <p>For more information about how Microsoft collects, uses, and protects your personal data, please review the <a href="http://go.microsoft.com/fwlink/?LinkId=521839" target="_blank" rel="noreferrer">Microsoft Privacy Statement</a>.</p>
         </div>
       </section>
